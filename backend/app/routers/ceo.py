@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..deps import Principal, current_user, get_db, require
 from ..models import Agent, CeoReview, Department, Project, Task, TaskDependency
+from ..services import lessons as lessons_svc
 from ..services.common import audit, get_bool
 
 router = APIRouter(prefix="/api/ceo", tags=["ceo"])
@@ -104,12 +105,16 @@ def decide(tid: int, body: DecideIn, user: Principal = Depends(require("owner"))
         s.add(follow)
         s.flush()
         s.add(TaskDependency(task_id=follow.id, depends_on_id=t.id))  # kết quả bước trước tự động chuyển sang
+    suggested = None
+    if note and body.decision in ("rework", "accepted"):  # ghi chú của CEO → đề xuất bài học (chờ duyệt, chưa chèn vào prompt)
+        suggested = lessons_svc.suggest(s, department_key=t.department_key, project_id=t.project_id, text=note, task_id=t.id,
+                                        by=user.username)
     r = CeoReview(task_id=t.id, decision=body.decision, note=note, followup_task_id=follow.id if follow else None,
                   decided_by=user.username)
     s.add(r)
     audit(s, user.username, f"ceo_{body.decision}", "task", t.id, f"{t.title}" + (f" → #{follow.id}" if follow else ""))
     s.commit()
-    return {"decision": r.decision, "followup_task_id": r.followup_task_id}
+    return {"decision": r.decision, "followup_task_id": r.followup_task_id, "lesson_suggested": bool(suggested)}
 
 
 @router.post("/digest", status_code=201)

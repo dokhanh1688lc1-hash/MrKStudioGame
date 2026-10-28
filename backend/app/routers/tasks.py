@@ -6,7 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from ..deps import Principal, current_user, get_db, require
-from ..models import (Agent, Approval, CeoReview, Department, FileChange, ProviderConfig, Project, Task, TaskAttempt,
+from ..models import (Agent, Approval, CeoReview, Department, FileChange, Lesson, ProviderConfig, Project, Task, TaskAttempt,
                       TaskDependency, UsageRecord)
 from ..schemas import BulkTaskIn, TaskDetail, TaskIn, TaskOut, TaskPatch
 from ..services.common import EngineError, audit, slugify
@@ -219,7 +219,7 @@ def _delete_task(s: Session, t: Task) -> None:
         s.delete(c)
     for c in s.scalars(select(CeoReview).where(CeoReview.followup_task_id == t.id)):
         c.followup_task_id = None
-    for m, col in ((FileChange, FileChange.task_id), (UsageRecord, UsageRecord.task_id)):
+    for m, col in ((FileChange, FileChange.task_id), (UsageRecord, UsageRecord.task_id), (Lesson, Lesson.task_id)):
         for r in s.scalars(select(m).where(col == t.id)):
             r.task_id = None  # giữ lịch sử sửa file và số lượt chạy (hạn mức), chỉ gỡ liên kết
     for m in (Approval, TaskAttempt):

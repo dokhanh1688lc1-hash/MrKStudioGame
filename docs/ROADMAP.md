@@ -60,3 +60,5 @@ Lưu ý: nút “Chạy các bước sẵn sàng” chỉ chạy **một lượt
 - Quản lý việc được giao (Task Center): thanh tiến độ tổng/theo dự án/theo phòng ban (tự cập nhật 6 giây), lọc theo dự án/phòng ban/trạng thái, sửa, xóa từng việc hoặc xóa hàng loạt (không xóa việc đang chạy; giữ lịch sử sửa file và số lượt chạy) — Implemented.
 
 - Game mẫu Godot 4 “Coin Dash” (`samples/godot-coin-dash`): mã GDScript, tài sản tự tạo CC0, GDD, hồ sơ bản quyền; nút “Tạo dự án mẫu Godot” tạo dự án và đăng ký tài sản — Implemented (kiểm tra tĩnh; **chưa chạy thử trong Godot thật**).
+
+- Sổ bài học theo phòng ban: ghi chú của CEO khi Chấp nhận/Sửa lại → bài học chờ duyệt; bài đang dùng được chèn gọn (≤8 bài, ≤1500 ký tự) vào prompt nhiệm vụ sau của phòng đó; phạm vi theo dự án hoặc mọi dự án; che khóa; giới hạn 30 bài/phòng — Implemented.

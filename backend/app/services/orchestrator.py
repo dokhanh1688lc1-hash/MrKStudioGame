@@ -17,6 +17,7 @@ from ..models import (Agent, Approval, Department, ProviderConfig, Task, TaskAtt
 from ..providers.base import ProviderError
 from ..providers.registry import FAMILY_TO_PROVIDER, ProviderRegistry
 from .budget import check_limits
+from . import lessons as lessons_svc
 from .common import EngineError, audit, get_bool, get_setting, set_setting
 
 RUNNABLE = {"Pending", "Planned", "Assigned", "Blocked", "Failed"}
@@ -36,8 +37,10 @@ def upstream_results(s: Session, t: Task) -> list[tuple[str, str]]:
     return out
 
 
-def build_prompt(t: Task, upstream: list[tuple[str, str]] | None = None) -> str:
+def build_prompt(t: Task, upstream: list[tuple[str, str]] | None = None, lessons: list[str] | None = None) -> str:
     parts = [f"# Nhiệm vụ: {t.title}", f"## Mục tiêu\n{t.objective}"]
+    if lessons:
+        parts.append("## Bài học của phòng ban (chủ studio đã duyệt — hãy tuân thủ)\n" + "\n".join(f"- {x}" for x in lessons))
     for title, res in upstream or []:
         parts.append(f"## Kết quả từ bước trước: {title}\n{res}")
     for label, val in (("Bối cảnh / đầu vào", t.context), ("Ràng buộc", t.constraints),
@@ -168,7 +171,7 @@ class Orchestrator:
             t = s.get(Task, task_id)
             agent = s.get(Agent, t.agent_id) if t.agent_id else None
             system = agent.system_prompt if agent else ""
-            prompt = build_prompt(t, upstream_results(s, t))
+            prompt = build_prompt(t, upstream_results(s, t), lessons_svc.texts_and_mark_used(s, t.department_key, t.project_id))
             last_error, first = "Không có lần gọi nào được thực hiện.", True
 
             for pname, model in chain:

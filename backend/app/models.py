@@ -155,6 +155,28 @@ class CeoReview(Base):
     __table_args__ = (CheckConstraint(_in("decision", ["accepted", "rework", "forward", "dismissed"]), name="ck_ceo_decision"),)
 
 
+LESSON_STATUSES = ["suggested", "active", "archived"]
+LESSON_SOURCES = ["manual", "ceo"]
+
+
+class Lesson(Base, Stamped):
+    """Bài học của một phòng ban: chỉ bài 'active' được chèn vào prompt các nhiệm vụ sau của phòng đó."""
+    __tablename__ = "lessons"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    department_key: Mapped[str] = mapped_column(String(40), index=True)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True)  # None = mọi dự án
+    text: Mapped[str] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(String(10), default="active", index=True)
+    source: Mapped[str] = mapped_column(String(10), default="manual")
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), nullable=True)
+    uses: Mapped[int] = mapped_column(Integer, default=0)
+    created_by: Mapped[str] = mapped_column(String(64), default="")
+    __table_args__ = (
+        CheckConstraint(_in("status", LESSON_STATUSES), name="ck_lesson_status"),
+        CheckConstraint(_in("source", LESSON_SOURCES), name="ck_lesson_source"),
+    )
+
+
 ASSET_KINDS = ["image", "audio", "font", "model", "data", "other"]
 ASSET_SOURCES = ["own", "purchased", "open_license", "ai_generated", "unknown"]
 ASSET_STATUSES = ["draft", "approved", "rejected"]

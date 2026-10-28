@@ -27,9 +27,9 @@ function Item({ it, owner, depts, onDone, go }: { it: any; owner: boolean; depts
         <>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ghi chú / phản hồi của CEO (bắt buộc khi yêu cầu sửa lại; làm nội dung việc khi chuyển phòng khác)" />
           <p className="row tight" style={{ alignItems: "center" }}>
-            <button className="btn" disabled={busy} onClick={() => decide("accepted", "Đã chấp nhận.")}>✔ Chấp nhận</button>
+            <button className="btn" disabled={busy} onClick={() => decide("accepted", "Đã chấp nhận. Ghi chú của bạn (nếu có) được đề xuất thành bài học trong Sổ bài học để bạn duyệt.")}>✔ Chấp nhận</button>
             <button className="btn ghost" disabled={busy || !note.trim()} title={!note.trim() ? "Hãy ghi rõ cần sửa gì" : ""}
-              onClick={() => decide("rework", "Đã giao phòng sửa lại.", "Giao lại nhiệm vụ này cho phòng ban kèm phản hồi của bạn?")}>🔧 Yêu cầu sửa lại</button>
+              onClick={() => decide("rework", "Đã giao phòng sửa lại. Phản hồi của bạn được đề xuất thành bài học trong Sổ bài học để bạn duyệt.", "Giao lại nhiệm vụ này cho phòng ban kèm phản hồi của bạn?")}>🔧 Yêu cầu sửa lại</button>
             <select value={target} onChange={(e) => setTarget(e.target.value)} style={{ width: "auto" }}>
               <option value="">Chuyển sang phòng…</option>{depts.filter((d) => d.key !== it.department_key && d.key !== "ceo").map((d) => <option key={d.key} value={d.key}>{d.name}</option>)}</select>
             <button className="btn ghost" disabled={busy || !target} onClick={() => decide("forward", "Đã chuyển sang phòng ban khác.")}>➡ Chuyển</button>
