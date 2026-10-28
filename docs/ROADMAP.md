@@ -10,9 +10,9 @@
 | Ngân sách (6 phạm vi × 3 kỳ), ước tính chi phí, usage | Implemented |
 | Approval Center, Emergency Stop | Implemented |
 | Dashboard tiếng Việt: 9/25 trang | Partially Implemented |
-| Alembic migrations | Not Implemented (dùng create_all) |
+| Alembic migrations (baseline + stamp DB cũ + test không lệch model) | Implemented |
 | Đánh giá chéo 2 provider, giới hạn số lần gọi/phút | Not Implemented |
-| Backup tự động | Not Implemented (hướng dẫn thủ công) |
+| Sao lưu SQLite: thủ công + tự động (khởi động/24h, trước migrate), giữ 14 bản | Implemented (khôi phục vẫn thủ công, chưa kiểm thử PostgreSQL) |
 
 ## Phase 2 — Phòng ban AI (đang làm)
 | Hạng mục | Trạng thái |
@@ -37,7 +37,7 @@ Lưu ý: nút “Chạy các bước sẵn sàng” chỉ chạy **một lượt
 
 ## Các bước tiếp theo (ưu tiên)
 1. Điền khóa, kiểm tra kết nối, chạy nhiệm vụ thật; chỉnh giá để xem chi phí thực.
-2. Thêm Alembic migrations.
+2. (đã xong) Alembic migrations + sao lưu.
 3. Phase 2: workflow riêng từng phòng ban (Market Research → Game Design → Game Dev → QA → …) và các trang còn lại (Asset Library, Telegram…).
 4. Phase 3: game 2D mẫu bằng Godot 4 (GDD, gameplay, tài sản riêng, hồ sơ bản quyền).
 5. Telegram bot có xác thực user ID, Phase 4–5 theo đặc tả.

@@ -477,6 +477,7 @@ export function Settings({ role }: Role) {
   const { run, busy, banner } = useAction();
   const [nu, setNu] = useState({ username: "", password: "", role: "viewer" });
   const [thr, setThr] = useState("");
+  const backups = useLoad<any[]>(role === "owner" ? "/system/backups" : null);
   return (
     <>
       <h2>Cài đặt & Bảo mật</h2>{banner}
@@ -501,6 +502,19 @@ export function Settings({ role }: Role) {
           </div>
         )}
       </Async>
+      {role === "owner" && (
+        <div className="card">
+          <b>Sao lưu database</b>
+          <p className="muted">Tự động sao lưu khi khởi động (tối đa 1 lần/24 giờ) và trước mỗi lần nâng cấp schema; giữ 14 bản mới nhất trong thư mục <code>data\backups</code>. Khôi phục: tắt ứng dụng, chép đè file <code>data\mrk_studio.db</code> bằng một bản sao lưu.</p>
+          <button className="btn" disabled={busy} onClick={() => run(() => api("/system/backups", { method: "POST" }), "Đã tạo bản sao lưu.").then(backups.reload)}>Sao lưu ngay</button>
+          <Async loading={backups.loading} error={backups.error}>
+            {backups.data?.length ? (
+              <div className="tablewrap"><table><thead><tr><th>Tệp</th><th>Thời gian</th><th>Dung lượng</th></tr></thead>
+                <tbody>{backups.data.map((b) => <tr key={b.name}><td>{b.name}</td><td>{b.created}</td><td>{Math.round(b.size / 1024)} KB</td></tr>)}</tbody></table></div>
+            ) : <Empty text="Chưa có bản sao lưu." />}
+          </Async>
+        </div>
+      )}
       {role === "owner" && (
         <div className="card">
           <b>Người dùng</b>

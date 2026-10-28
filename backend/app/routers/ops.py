@@ -13,6 +13,7 @@ from ..schemas import (ApprovalIn, ApprovalOut, AuditOut, BudgetIn, BudgetOut, D
 from ..services.budget import spent
 from ..services.common import audit, get_bool, get_setting, set_setting
 from ..services.orchestrator import plan_route
+from ..services import backup as bk
 from ..services.common import EngineError
 
 router = APIRouter(prefix="/api", tags=["ops"])
@@ -216,3 +217,19 @@ def dashboard(request: Request, _: Principal = Depends(current_user), s: Session
                        "last_check_status": p.last_check_status} for p in provs],
         "system": _system_state(s),
     }
+
+
+@router.get("/system/backups")
+def backups(request: Request, _: Principal = Depends(require("owner"))):
+    return bk.list_backups(request.app.state.settings.data_dir)
+
+
+@router.post("/system/backups", status_code=201)
+def make_backup(request: Request, user: Principal = Depends(require("owner")), s: Session = Depends(get_db)):
+    try:
+        res = bk.create_backup(request.app.state.engine, request.app.state.settings.data_dir)
+    except EngineError as e:
+        raise HTTPException(e.status, e.message)
+    audit(s, user.username, "backup_created", "system", "", res["name"])
+    s.commit()
+    return res

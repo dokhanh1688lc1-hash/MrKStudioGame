@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import Settings
-from .db import Base, make_engine, make_session_factory
+from .db import make_engine, make_session_factory
+from .migrate import migrate
+from .services import backup
 from .providers.registry import ProviderRegistry
 from .routers import auth_users, ops, projects, tasks
 from .services.orchestrator import Orchestrator
@@ -22,11 +25,18 @@ def create_app(settings: Settings | None = None, transports: dict | None = None,
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.games_dir.mkdir(parents=True, exist_ok=True)
     engine = make_engine(settings.database_url)
-    Base.metadata.create_all(engine)  # Phase 1: tạo bảng trực tiếp; Alembic: xem docs/DEVELOPMENT.md
+    try:  # có dữ liệu cũ → sao lưu trước khi nâng cấp schema
+        dbf = engine.url.database
+        if engine.url.get_backend_name() == "sqlite" and dbf and Path(dbf).is_file() and Path(dbf).stat().st_size > 0:
+            backup.create_backup(engine, settings.data_dir)
+    except Exception as e:  # noqa: BLE001
+        log.warning("Không sao lưu được trước migration: %s", e)
+    migrate(engine)  # Alembic: tạo/nâng cấp schema; DB cũ được stamp về baseline
     sf = make_session_factory(engine)
 
     app = FastAPI(title="MrK Studio Game", version="0.1.0")
     app.state.settings = settings
+    app.state.engine = engine
     app.state.secret = settings.ensure_secret()
     app.state.sf = sf
     app.state.registry = ProviderRegistry(settings, transports)
@@ -35,6 +45,11 @@ def create_app(settings: Settings | None = None, transports: dict | None = None,
     with sf() as s:
         pwd = seed_all(s, settings)
         n = recover_interrupted(s)
+    try:  # sao lưu tự động tối đa 1 lần/24 giờ khi khởi động
+        if settings.database_url.startswith("sqlite") and backup.needs_daily_backup(settings.data_dir):
+            backup.create_backup(engine, settings.data_dir)
+    except Exception as e:  # noqa: BLE001 - lỗi sao lưu không được chặn khởi động
+        log.warning("Sao lưu tự động thất bại: %s", e)
     if pwd:
         msg = f"Tài khoản chủ studio: '{settings.admin_username}' / mật khẩu (chỉ hiện một lần): {pwd}"
         print("=" * 70 + f"\n{msg}\n" + "=" * 70)

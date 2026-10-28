@@ -20,4 +20,4 @@ Giới hạn đã biết: token không thu hồi được trước hạn; chưa 
 - Nội dung gửi cho AI và hiển thị trên giao diện được che chuỗi giống khóa API/khóa riêng/dòng `key|token|secret|password = …`. Việc che là best-effort, **không** bảo đảm tuyệt đối: đừng tải lên mã chứa bí mật nếu không cần; dùng cờ “nhạy cảm” để chỉ gửi provider được cấp quyền.
 
 ## Backup / khôi phục
-Dừng ứng dụng, sao chép `data/mrk_studio.db` (và `data/secret.key`) ra nơi an toàn. Khôi phục: dừng ứng dụng, chép đè lại hai file. Backup tự động: chưa triển khai.
+Ứng dụng tự sao lưu `data/mrk_studio.db` vào `data/backups/` (khi khởi động nếu bản mới nhất > 24 giờ; trước mỗi lần migrate; nút “Sao lưu ngay” ở Cài đặt), giữ 14 bản. Nên chép định kỳ thư mục `data/backups/` và `games/` ra ổ khác — bản sao lưu nằm cùng ổ đĩa không chống được hỏng ổ. Khôi phục: tắt ứng dụng, chép đè `data/mrk_studio.db` bằng một bản sao lưu. `data/secret.key` mất chỉ khiến người dùng phải đăng nhập lại.
