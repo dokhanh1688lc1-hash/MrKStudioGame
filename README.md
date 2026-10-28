@@ -33,6 +33,9 @@ Việc dùng tính vào hạn mức gói thuê bao của bạn, không tính USD
 Trang **Dự án** → nút **Sửa** để đổi thông tin; nút **Mã nguồn** để nhập dự án có sẵn từ **GitHub**, từ **thư mục trên máy** (chủ studio khai báo thư mục cho phép ở Cài đặt → “Thư mục dự án trên máy”) hoặc tải lên .zip (ví dụ tải từ Claude) / từng tệp; bấm “Cập nhật lại từ nguồn” để lấy bản mới. Nhập vào là SAO CHÉP. Muốn AI sửa file thật trên máy: liên kết thư mục, chủ studio bật “Cho phép ghi”, AI đề xuất → bạn xem diff → Áp dụng (có sao lưu và Hoàn tác). Sau đó
 xem tệp, rồi tạo nhiệm vụ **Phân tích & nâng cấp** cho AI. AI trả báo cáo/đoạn mã đề xuất; hệ thống không tự sửa tệp của bạn.
 
+## Truy cập từ xa
+Chạy `online.bat` để vào từ điện thoại/máy khác qua Tailscale (riêng tư). Hướng dẫn và lưu ý bảo mật: [docs/ONLINE.md](docs/ONLINE.md).
+
 ## Cấu trúc
 ```
 backend/   FastAPI + SQLAlchemy (app/, tests/)
