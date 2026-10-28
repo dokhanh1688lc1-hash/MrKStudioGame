@@ -77,7 +77,10 @@ export function Projects({ role }: Role) {
             <Field label="Thị trường mục tiêu"><input value={f.target_market} onChange={(e) => setF({ ...f, target_market: e.target.value })} /></Field>
           </div>
           <Field label="Mô tả"><textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>
-          <p><button className="btn" disabled={busy}>Tạo dự án</button></p>
+          <p className="row tight"><button className="btn" disabled={busy}>Tạo dự án</button>
+            <button type="button" className="btn ghost" disabled={busy} title="Tạo sẵn một game Godot 4 nhỏ kèm tài sản CC0, GDD và hồ sơ bản quyền"
+              onClick={async () => { if (await run(() => api("/samples/godot-coin-dash", { method: "POST" }), "Đã tạo dự án mẫu Coin Dash (Godot 4). Xem mã nguồn ở Mã nguồn, tài sản ở Thư viện tài sản.")) list.reload(); }}>
+              Tạo dự án mẫu Godot (Coin Dash)</button></p>
         </form>
       )}
       <div className="card">

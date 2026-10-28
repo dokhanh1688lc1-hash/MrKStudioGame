@@ -1,0 +1,14 @@
+{
+  "author": "MrK Studio Game",
+  "license": "CC0 1.0 Universal",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "notes": "Tạo bằng mã (tools/make_assets.py), không dùng tài sản của bên thứ ba và không dùng AI sinh nội dung.",
+  "assets": [
+    {"file": "assets/player.png", "name": "Nhân vật chính (sprite 24x32)", "kind": "image"},
+    {"file": "assets/coin.png", "name": "Đồng xu (sprite 16x16)", "kind": "image"},
+    {"file": "assets/tile.png", "name": "Ô đất/cỏ (tile 32x32)", "kind": "image"},
+    {"file": "assets/background.png", "name": "Nền trời và núi (320x180)", "kind": "image"},
+    {"file": "assets/coin.wav", "name": "Âm thanh nhặt xu", "kind": "audio"},
+    {"file": "assets/jump.wav", "name": "Âm thanh nhảy", "kind": "audio"}
+  ]
+}

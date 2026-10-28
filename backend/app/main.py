@@ -12,7 +12,7 @@ from .db import make_engine, make_session_factory
 from .migrate import migrate
 from .services import backup
 from .providers.registry import ProviderRegistry
-from .routers import assets, auth_users, ceo, changes, ops, projects, tasks
+from .routers import assets, auth_users, ceo, changes, ops, projects, samples, tasks
 from .services.orchestrator import Orchestrator
 from .services.seed import recover_interrupted, seed_all
 
@@ -59,7 +59,7 @@ def create_app(settings: Settings | None = None, retry_delay: float = 1.0) -> Fa
     def health():
         return {"status": "ok"}
 
-    for r in (auth_users.router, projects.router, assets.router, changes.router, ceo.router, tasks.router, tasks.pipe, ops.router):
+    for r in (auth_users.router, projects.router, assets.router, changes.router, ceo.router, samples.router, tasks.router, tasks.pipe, ops.router):
         app.include_router(r)
 
     dist = settings.frontend_dist
