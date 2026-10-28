@@ -22,6 +22,7 @@
 | Cổng phê duyệt chủ studio (GDD, Prototype, Release prep) | Implemented |
 | Màn hình “Văn phòng studio”: 14 phòng ban dạng tranh minh họa, trạng thái trực tiếp, bấm phòng để xem việc/giao việc | Implemented |
 | Hộp thư CEO: nhiệm vụ xong/thất bại báo về CEO; CEO chấp nhận / yêu cầu sửa lại (giao lại kèm phản hồi) / chuyển phòng khác (QA, DevOps…) / bỏ qua; CEO AI tổng hợp & đề xuất quyết định (người vẫn quyết) | Implemented |
+| Thư viện tài sản: tải/ghi nhận hình, âm thanh, phông, mô hình 3D kèm nguồn gốc & giấy phép; cảnh báo thiếu giấy phép; chỉ duyệt khi hết vấn đề (owner); nhờ phòng Bản quyền rà soát | Implemented (không có tạo ảnh/âm thanh bằng AI) |
 | Giao một nhiệm vụ cho nhiều phòng ban cùng lúc (ghi chú riêng từng phòng, tùy chọn chạy ngay) | Implemented |
 | Mẫu nhiệm vụ theo phòng ban (≈35 mẫu: GDD, Art Bible, test case, kế hoạch ra mắt…), giao nhanh từ Văn phòng studio hoặc chọn trong Task Center | Implemented |
 | Trang chuyên sâu riêng cho từng phòng ban (workflow nhiều bước riêng) | Not Implemented |

@@ -155,6 +155,34 @@ class CeoReview(Base):
     __table_args__ = (CheckConstraint(_in("decision", ["accepted", "rework", "forward", "dismissed"]), name="ck_ceo_decision"),)
 
 
+ASSET_KINDS = ["image", "audio", "font", "model", "data", "other"]
+ASSET_SOURCES = ["own", "purchased", "open_license", "ai_generated", "unknown"]
+ASSET_STATUSES = ["draft", "approved", "rejected"]
+
+
+class Asset(Base, Stamped):
+    """Tài sản của dự án (hình, âm thanh, phông…) kèm nguồn gốc và giấy phép để kiểm soát bản quyền."""
+    __tablename__ = "assets"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(160))
+    kind: Mapped[str] = mapped_column(String(12), default="other")
+    source: Mapped[str] = mapped_column(String(14), default="unknown")
+    license: Mapped[str] = mapped_column(String(200), default="")
+    license_url: Mapped[str] = mapped_column(String(400), default="")
+    author: Mapped[str] = mapped_column(String(160), default="")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    file_path: Mapped[str] = mapped_column(String(300), default="")   # tương đối so với workspace; rỗng = chưa có tệp
+    file_size: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(10), default="draft", index=True)
+    created_by: Mapped[str] = mapped_column(String(64), default="")
+    __table_args__ = (
+        CheckConstraint(_in("kind", ASSET_KINDS), name="ck_asset_kind"),
+        CheckConstraint(_in("source", ASSET_SOURCES), name="ck_asset_source"),
+        CheckConstraint(_in("status", ASSET_STATUSES), name="ck_asset_status"),
+    )
+
+
 class TaskDependency(Base):
     __tablename__ = "task_dependencies"
     task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"), primary_key=True)

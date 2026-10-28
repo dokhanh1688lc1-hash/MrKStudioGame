@@ -42,3 +42,8 @@ Giới hạn đã biết: token không thu hồi được trước hạn; chưa 
 - Chỉ tệp văn bản/mã nguồn có đuôi trong danh sách cho phép; chặn `.env`, khóa, `.bat/.cmd/.ps1/.sh/.exe/.dll…`, `.git`, `node_modules`; không xóa tệp; chặn `..`, đường dẫn tuyệt đối, ổ đĩa, symlink ở mọi cấp; tối đa 1 MB/tệp, 50 tệp/lần trích.
 - Trước khi ghi: so sha256 với bản lúc đề xuất (tệp đã đổi → từ chối, không ghi đè công việc của bạn); sao lưu bản gốc vào `data/file-backups/`; ghi nguyên tử; giữ kiểu xuống dòng CRLF/LF. Hoàn tác chỉ chạy khi tệp chưa bị sửa tiếp.
 - Mọi hành động có audit log (đề xuất, áp dụng, từ chối, hoàn tác, bật/tắt quyền ghi).
+
+## Thư viện tài sản
+- Chỉ nhận đuôi tệp ảnh/âm thanh/phông/mô hình 3D/dữ liệu thông dụng, tối đa 50 MB; không nhận script, tệp thực thi, SVG (có thể chứa mã), tệp bí mật. Tên tệp được làm sạch (bỏ đường dẫn), lưu trong `games/<dự án>/assets/`.
+- Tải xuống luôn dạng đính kèm (`attachment`), `nosniff`, `Content-Security-Policy: sandbox`.
+- Tài sản chỉ được duyệt (owner) khi đã rõ nguồn gốc/giấy phép/tác giả; sửa thông tin sau khi duyệt sẽ trả về “Nháp”.

@@ -47,9 +47,10 @@ export function useLoad<T>(path: string | null, deps: unknown[] = []) {
 
 export const utc = (s?: string | null) => (s ? new Date(s).toLocaleString("vi-VN") : "—");
 
-export async function upload(path: string, files: File[]): Promise<any> {
+export async function upload(path: string, files: File[], fields: Record<string, string> = {}, fieldName = "files"): Promise<any> {
   const fd = new FormData();
-  files.forEach((f) => fd.append("files", f));
+  Object.entries(fields).forEach(([k, v]) => fd.append(k, v));
+  files.forEach((f) => fd.append(fieldName, f));
   const res = await fetch("/api" + path, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` }, body: fd });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -57,4 +58,13 @@ export async function upload(path: string, files: File[]): Promise<any> {
     throw new ApiError(res.status, typeof d === "string" ? d : Array.isArray(d) ? d.map((x: any) => x.msg).join("; ") : `Lỗi ${res.status}`);
   }
   return data;
+}
+
+export async function download(path: string, filename: string): Promise<void> {
+  const res = await fetch("/api" + path, { headers: { Authorization: `Bearer ${getToken()}` } });
+  if (!res.ok) throw new ApiError(res.status, `Lỗi ${res.status}`);
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
