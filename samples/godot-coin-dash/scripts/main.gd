@@ -18,6 +18,7 @@ const COINS := [
 ]
 
 var player: Player
+var best: Dictionary = {"score": 0, "time_left": 0.0}
 var score := 0
 var time_left := TIME_LIMIT
 var finished := false
@@ -28,6 +29,7 @@ var _sfx_jump: AudioStreamPlayer
 
 
 func _ready() -> void:
+	best = Progress.load_best()
 	_setup_input()
 	_build_background()
 	for p in PLATFORMS:
@@ -53,7 +55,7 @@ func _process(delta: float) -> void:
 	if finished:
 		return
 	time_left = maxf(0.0, time_left - delta)
-	_label.text = "Xu: %d/%d   Thoi gian: %d" % [score, COINS.size(), ceili(time_left)]
+	_label.text = "Xu: %d/%d   Thoi gian: %d   Ky luc: %d" % [score, COINS.size(), ceili(time_left), best["score"]]
 	if time_left <= 0.0:
 		_finish("Het gio! Diem: %d/%d\nNhan R de choi lai" % [score, COINS.size()])
 
@@ -68,6 +70,10 @@ func _on_coin() -> void:
 func _finish(text: String) -> void:
 	finished = true
 	player.enabled = false
+	var new_record := Progress.record(score, time_left)
+	if new_record:
+		best = Progress.load_best()
+		text += "\nKy luc moi!"
 	_msg.text = text
 	_msg.visible = true
 

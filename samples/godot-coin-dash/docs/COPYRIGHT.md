@@ -3,7 +3,7 @@
 Mục đích: chứng minh mọi thành phần của game đều có nguồn gốc rõ ràng và được phép dùng. Cập nhật mỗi khi thêm tài sản.
 
 ## 1. Mã nguồn
-- `scripts/*.gd`, `main.tscn`, `project.godot`: do MrK Studio Game viết, phát hành theo **CC0 1.0** (có thể đổi theo ý chủ studio).
+- `scripts/*.gd`, `tests/*.gd`, `main.tscn`, `project.godot`: do MrK Studio Game viết, phát hành theo **CC0 1.0** (có thể đổi theo ý chủ studio).
 
 ## 2. Tài sản (chi tiết ở `asset-manifest.json` và Thư viện tài sản của nền tảng)
 | Tệp | Loại | Nguồn | Giấy phép | Tác giả |

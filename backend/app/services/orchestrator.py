@@ -12,7 +12,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from ..db import utcnow
-from ..models import (Agent, Approval, Department, ProviderConfig, Task, TaskAttempt,
+from ..models import (Agent, Approval, Department, Project, ProviderConfig, Task, TaskAttempt,
                       TaskDependency, UsageRecord)
 from ..providers.base import ProviderError
 from ..providers.registry import FAMILY_TO_PROVIDER, ProviderRegistry
@@ -107,6 +107,9 @@ class Orchestrator:
                 raise EngineError(404, "Không tìm thấy nhiệm vụ.")
             if get_bool(s, "emergency_stop"):
                 raise EngineError(423, "Emergency Stop đang bật. Tắt trước khi chạy nhiệm vụ.")
+            proj = s.get(Project, t.project_id)
+            if proj and proj.status == "Paused":
+                raise EngineError(409, "Dự án đang tạm dừng. Vào Studio Manager đổi trạng thái dự án để tiếp tục rồi chạy lại.")
             if t.status == "Running":
                 raise EngineError(409, "Nhiệm vụ đang chạy (chống chạy trùng).")
             if t.status not in RUNNABLE:

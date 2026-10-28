@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..deps import Principal, get_db, require
-from ..models import Asset, Project
+from ..models import Asset, Project, ProjectDocument, TestCase
 from ..services.common import audit, slugify
 
 router = APIRouter(prefix="/api/samples", tags=["samples"])
@@ -17,6 +17,9 @@ router = APIRouter(prefix="/api/samples", tags=["samples"])
 SAMPLE = Path(__file__).resolve().parents[3] / "samples" / "godot-coin-dash"
 BASE_NAME = "Coin Dash (game mẫu Godot)"
 SKIP_DIRS = {".godot", "__pycache__"}
+SAMPLE_DOCS = {"GDD.md": ("gdd", "GDD — Coin Dash"), "COPYRIGHT.md": ("legal", "Hồ sơ bản quyền — Coin Dash"),
+               "MONETIZATION.md": ("monetization", "Kế hoạch kiếm tiền — Coin Dash"), "BUILD.md": ("tech", "Hướng dẫn build — Coin Dash"),
+               "BUG_REPORT_TEMPLATE.md": ("qa_report", "Mẫu báo cáo lỗi — Coin Dash")}
 
 
 def sample_dir() -> Path:
@@ -56,6 +59,22 @@ def create_sample(request: Request, user: Principal = Depends(require("manager")
                     license_url=manifest["license_url"], author=manifest["author"], notes=manifest["notes"],
                     file_path=a["file"], file_size=f.stat().st_size, status="draft", created_by=user.username))
         count += 1
-    audit(s, user.username, "sample_created", "project", p.id, f"{p.name}: {count} tài sản")
+    docs = 0
+    for fname, (kind, title) in SAMPLE_DOCS.items():
+        f = ws / "docs" / fname
+        if f.is_file():
+            s.add(ProjectDocument(project_id=p.id, kind=kind, title=title, version=1, content=f.read_text(encoding="utf-8")[:200_000],
+                                  status="draft", created_by=user.username))
+            docs += 1
+    cases = 0
+    tc = ws / "tests" / "test-cases.txt"
+    if tc.is_file():
+        for line in tc.read_text(encoding="utf-8").splitlines():
+            parts = [x.strip() for x in line.split("|")]
+            if parts and parts[0]:   # trạng thái luôn là "chưa chạy" — chưa ai chạy thử
+                s.add(TestCase(project_id=p.id, title=parts[0][:200], steps=parts[1] if len(parts) > 1 else "",
+                               expected=parts[2] if len(parts) > 2 else "", area=parts[3][:60] if len(parts) > 3 else "", created_by=user.username))
+                cases += 1
+    audit(s, user.username, "sample_created", "project", p.id, f"{p.name}: {count} tài sản, {docs} tài liệu, {cases} test case")
     s.commit()
-    return {"project_id": p.id, "name": p.name, "assets": count}
+    return {"project_id": p.id, "name": p.name, "assets": count, "documents": docs, "test_cases": cases}

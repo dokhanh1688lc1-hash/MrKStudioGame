@@ -1,0 +1,12 @@
+Mở game và thấy màn chơi | Chạy project (F5) | Hiện nền trời, nhân vật, 12 xu, HUD "Xu / Thời gian / Kỷ lục" | khởi động
+Di chuyển trái/phải | Giữ ← → hoặc A D | Nhân vật chạy mượt, lật hướng theo phím, không đi ra ngoài thế giới | điều khiển
+Nhảy lên bậc | Nhấn Space khi đứng trên đất | Nhảy lên được các bậc thấp; không nhảy được khi đang trên không | điều khiển
+Nhặt xu | Chạm vào một đồng xu | Xu biến mất, điểm +1, có âm thanh nhặt xu | gameplay
+Chiến thắng | Nhặt đủ 12 xu trước 60 giây | Hiện "Chiến thắng", nhân vật dừng điều khiển | gameplay
+Hết giờ | Để hết 60 giây | Hiện "Hết giờ" kèm số xu | gameplay
+Chơi lại | Nhấn R sau khi kết thúc và cả khi đang chơi | Màn chơi được tạo lại, điểm và thời gian về ban đầu | gameplay
+Lưu kỷ lục | Thắng một ván, thoát game, mở lại | HUD hiện kỷ lục của ván trước | lưu tiến trình
+Không ghi đè kỷ lục tốt hơn | Chơi ván kém hơn kỷ lục | Kỷ lục cũ giữ nguyên | lưu tiến trình
+Tự động hóa headless | godot --headless --path . --script tests/run_tests.gd | Tất cả test PASS, mã thoát 0 | tự động
+Tỉ lệ màn hình | Đổi cửa sổ sang 4:3 và 21:9 | Không lệch giao diện nghiêm trọng, HUD vẫn đọc được | giao diện
+Xuất bản build Windows | Làm theo docs/BUILD.md | Tạo được CoinDash.exe chạy độc lập | build

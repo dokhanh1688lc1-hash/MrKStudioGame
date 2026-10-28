@@ -127,3 +127,7 @@ pre.out.diff { font: 12.5px/1.45 ui-monospace, Consolas, monospace; white-space:
 .timeline{list-style:none;padding:0;margin:0}.timeline li{padding:4px 0;border-bottom:1px solid var(--line);font-size:14px}
 .helpbox{background:var(--panel2);border-left:5px solid var(--warn);border-radius:8px;padding:10px 12px;margin:8px 0}
 .helpbox ol{margin:4px 0 0 20px;padding:0}
+.badge.draft, .badge.Blocked { color: var(--warn); }
+.badge.passed, .badge.ready, .badge.released { color: var(--ok); }
+.checklist{list-style:none;padding:0;margin:8px 0}.checklist li{padding:5px 0;border-bottom:1px solid var(--line)}.checklist li.done label{color:var(--ok)}
+.nav.sub{padding-left:26px;font-size:13px}

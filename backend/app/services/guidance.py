@@ -35,6 +35,8 @@ def explain_error(text: str | None) -> dict | None:
         return _g("missing_cli", "Không chạy được chương trình AI trên máy",
                   [INSTALL, "Mở lại cửa sổ lệnh và kiểm tra bằng `claude --version` hoặc `codex --version`.",
                    "Vào AI Provider & Routing → Kiểm tra kết nối."], "providers")
+    if "tạm dừng" in low:
+        return _g("paused", "Dự án đang tạm dừng", ["Vào Studio Manager, đổi trạng thái dự án sang giai đoạn đang làm (ví dụ Production).", "Quay lại chạy nhiệm vụ."], "studio")
     if "emergency stop" in low:
         return _g("emergency", "Emergency Stop đang bật",
                   ["Vào Cài đặt & Bảo mật, kiểm tra lý do rồi tắt Emergency Stop.", "Chạy lại nhiệm vụ."], "settings")

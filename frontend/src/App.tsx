@@ -3,17 +3,20 @@ import { api, getToken, setToken, useLoad } from "./api";
 import { Field, useAction } from "./ui";
 import { Assets } from "./Assets";
 import { Center } from "./Center";
+import { DEPT_ORDER, DeptPage, SPECS } from "./Dept";
+import { Studio } from "./Studio";
 import { CeoInbox } from "./Ceo";
 import { Lessons } from "./Lessons";
 import { Office } from "./Office";
 import { Agents, Approvals, Budgets, Dashboard, Logs, Pipeline, Projects, Providers, Settings, Tasks } from "./pages";
 
 const PAGES: [string, string][] = [
-  ["center", "Trung tâm CEO"], ["office", "Văn phòng studio"], ["ceo", "Hộp thư CEO"], ["dashboard", "CEO Dashboard"], ["projects", "Dự án"], ["pipeline", "Pipeline sản xuất"], ["tasks", "Task Center"], ["assets", "Thư viện tài sản"], ["lessons", "Sổ bài học"], ["agents", "Phòng ban & Agent"],
+  ["center", "Trung tâm CEO"], ["studio", "Studio Manager"], ["office", "Văn phòng studio"], ["ceo", "Hộp thư CEO"], ["dashboard", "CEO Dashboard"], ["projects", "Dự án"], ["pipeline", "Pipeline sản xuất"], ["tasks", "Task Center"], ["assets", "Thư viện tài sản"], ["lessons", "Sổ bài học"], ["agents", "Phòng ban & Agent"],
   ["providers", "AI Provider & Routing"], ["approvals", "Approval Center"], ["budgets", "Giới hạn lượt chạy"],
   ["logs", "Activity Logs"], ["settings", "Cài đặt & Bảo mật"],
 ];
-const SOON = ["Telegram"];
+const SOON = ["Telegram bot"];
+const DEPT_LABEL: Record<string, string> = { market_research: "Market Research", game_design: "Product & Game Design", art: "Art Studio", audio: "Audio Studio", game_dev: "Game Development", qa: "QA & Testing", monetization: "Monetization & Economy", marketing: "Marketing Studio", analytics: "Data & Analytics", devops: "DevOps & Release", finance: "Finance & Resources", compliance: "IP & Compliance", operations: "Telegram & Operations" };
 
 function Login({ onDone }: { onDone: () => void }) {
   const [u, setU] = useState("owner");
@@ -68,6 +71,8 @@ export default function App() {
         {PAGES.map(([k, label]) => (
           <button key={k} className={`nav ${page === k ? "on" : ""}`} onClick={() => go(k)}>{label}{k === "ceo" && ceoBox.data?.pending ? <span className="navbadge">{ceoBox.data.pending}</span> : null}{k === "center" && att.data && att.data.counts.urgent + att.data.counts.warn > 0 ? <span className={`navbadge ${att.data.counts.urgent ? "" : "warnb"}`}>{att.data.counts.urgent + att.data.counts.warn}</span> : null}{k === "lessons" && lessonBox.data?.counts.suggested ? <span className="navbadge">{lessonBox.data.counts.suggested}</span> : null}</button>
         ))}
+        <div className="soon">Phòng ban</div>
+        {DEPT_ORDER.map((k) => <button key={k} className={`nav sub ${page === `dept:${k}` ? "on" : ""}`} onClick={() => go(`dept:${k}`)}>{DEPT_LABEL[k]}</button>)}
         <div className="soon">Chưa triển khai (Phase 2+)</div>
         <ul className="soonlist">{SOON.map((s) => <li key={s}>{s}</li>)}</ul>
         <p className="muted" style={{ margin: "14px 8px", fontSize: 13 }}>
@@ -80,6 +85,8 @@ export default function App() {
         {page !== "center" && att.data?.counts.urgent > 0 && (
           <div className="stop urgentbar">🔴 {att.data.counts.urgent} việc KHẨN cần bạn: {att.data.items.find((i: any) => i.severity === "urgent")?.title}
             {" "}<button className="btn" onClick={() => go("center")}>Mở Trung tâm CEO</button></div>)}
+        {page === "studio" && <Studio role={role} go={go} />}
+        {page.startsWith("dept:") && SPECS[page.slice(5)] && <DeptPage key={page} dkey={page.slice(5)} role={role} go={go} />}
         {page === "center" && <Center role={role} go={go} data={att.data} loading={att.loading} error={att.error} />}
         {page === "assets" && <Assets role={role} go={go} />}
         {page === "lessons" && <Lessons role={role} />}

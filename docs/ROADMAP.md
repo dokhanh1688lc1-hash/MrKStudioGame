@@ -1,32 +1,78 @@
-# Lộ trình & trạng thái
+# Lộ trình & trạng thái (đối chiếu với MASTER_PROMPT_V2.md)
 
-## Phase 1 — Core Platform
+Chú thích: **Implemented** = có code + test + dùng được · **Partially** = làm một phần (ghi rõ phần thiếu) · **Not Implemented** = chưa làm (ghi lý do) · **Changed by owner** = chủ studio quyết định khác đặc tả.
+
+## Quyết định của chủ studio khác với đặc tả
+| Đặc tả | Quyết định | Hệ quả |
+|---|---|---|
+| OpenAI API / Anthropic API, biến `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Không dùng API key; chỉ dùng Claude Code và Codex đã đăng nhập trên máy (+ chế độ nội bộ) | Đã gỡ adapter API; “ngân sách USD” thành **giới hạn số lượt chạy**; không có chi phí AI theo từng lần gọi (gói thuê bao) |
+| Telegram bot | Bỏ qua ở thời điểm này | Phòng Telegram & Operations chỉ có trang thông báo “Not Implemented”; thông báo xem ở Trung tâm CEO |
+
+## Phần 3 — 14 phòng ban
+| Phòng | Trang riêng | Dữ liệu thật đi kèm | Ghi chú |
+|---|---|---|---|
+| CEO Dashboard | Trung tâm CEO, CEO Dashboard, Hộp thư CEO | Hộp thư, quyết định, thông báo khẩn | Implemented |
+| Market Research | Có | Tài liệu (báo cáo thị trường) | Không có công cụ tìm kiếm riêng — AI chỉ dùng kiến thức sẵn có; kết quả phải tự xác minh |
+| Product & Game Design | Có | GDD/thiết kế có phiên bản + duyệt | Implemented |
+| Art Studio | Có | Art Bible, Thư viện tài sản | Chỉ brief/prompt; **không sinh ảnh** |
+| Audio Studio | Có | Audio Bible, Thư viện tài sản | Chỉ brief/prompt; **không sinh âm thanh** |
+| Game Development | Có | Tài liệu kỹ thuật, build, Mã nguồn + sửa file có duyệt | Không tự build/chạy Godot |
+| QA & Testing | Có | Test case, test run, báo cáo lỗi có mức độ, tổng hợp | Trạng thái chỉ đổi khi có lần chạy test thật; không tự chạy test |
+| Monetization | Có | Tài liệu + sổ chi phí/doanh thu | Không tích hợp SDK quảng cáo/IAP (Partially) |
+| Marketing | Có | Tài liệu (kế hoạch, cửa hàng) | Không tự đăng bài/chạy quảng cáo (cố ý) |
+| Data & Analytics | Có | Báo cáo analytics nhập tay (bắt buộc nguồn, thời gian, hạn chế) | Không kết nối nguồn dữ liệu tự động |
+| DevOps & Release | Có | Build, checklist phát hành (5 mục tự tính + 5 mục xác nhận) | Không tự build/phát hành |
+| Finance | Có | Chi phí/doanh thu nhập tay, doanh thu chỉ tính khi owner xác nhận, tách ước tính/thực tế, không trộn tiền tệ, đếm lượt chạy AI | Không có giá AI theo lần gọi |
+| IP, Legal & Compliance | Có | Tài sản + vấn đề bản quyền + checklist | AI không thay thế rà soát pháp lý |
+| Telegram & Operations | Trang thông báo | — | **Not Implemented** (chủ studio bỏ qua) |
+
+## Phần 4–6 — Dự án, Task engine, Pipeline
 | Hạng mục | Trạng thái |
 |---|---|
-| Backend FastAPI, SQLite, auth + phân quyền, audit | Implemented |
-| Quản lý dự án (workspace riêng), Task Center, phụ thuộc, hủy, retry/timeout | Implemented |
-| 14 phòng ban + agent (registry, bật/tắt, provider ưu tiên) | Implemented |
-| Routing, fallback có kiểm soát, chế độ nội bộ; **đã gỡ hoàn toàn API key/adapter OpenAI & Anthropic** (chỉ dùng CLI trên máy) | Implemented |
-| Giới hạn số lượt chạy AI (6 phạm vi × 3 kỳ) và usage; migration 0003 chuyển từ ngân sách USD | Implemented |
-| Approval Center, Emergency Stop | Implemented |
-| Dashboard tiếng Việt: 11 trang (kể cả Văn phòng studio) / 25 theo đặc tả | Partially Implemented |
-| Alembic migrations (baseline + stamp DB cũ + test không lệch model) | Implemented |
-| Đánh giá chéo 2 provider, giới hạn số lần gọi/phút | Not Implemented |
-| Sao lưu SQLite: thủ công + tự động (khởi động/24h, trước migrate), giữ 14 bản | Implemented (có nút khôi phục cho owner; chưa kiểm thử PostgreSQL) |
+| Dự án: workspace riêng, trạng thái đủ 10 giá trị, Paused chặn chạy nhiệm vụ mới, Archived chỉ đọc | Implemented |
+| Dự án: GDD/tài liệu, Asset Library, task history, QA, build/phát hành | Implemented |
+| Dự án: roadmap/backlog riêng | Partially (backlog là tài liệu văn bản, chưa có bảng backlog) |
+| Cô lập theo quyền theo từng dự án (ProjectMember) | Not Implemented (mọi người dùng thấy mọi dự án; vai trò viewer/manager/owner áp dụng toàn studio) |
+| Task: dependency, chống chạy trùng, timeout, retry giới hạn, hủy, lịch sử chạy, khôi phục sau restart, sửa/xóa/hàng loạt | Implemented |
+| Task: chi phí ước tính/thực tế theo lần gọi | Changed by owner (đếm lượt chạy thay cho tiền) |
+| Pipeline: 12 bước liên phòng ban có cổng duyệt | Implemented. Thiếu 3 bước cuối (Launch, Live Operations, Analytics & Improvement) — Partially |
 
-## Phase 2 — Phòng ban AI (đang làm)
+## Phần 7 — 25 trang
+Login ✔ · CEO Dashboard ✔ · Studio Manager ✔ · Projects (+ chi tiết/mã nguồn/nhập GitHub-thư mục) ✔ · 13 trang phòng ban ✔ (Telegram: thông báo Not Implemented) · AI Agents ✔ · Task Center ✔ · Asset Library ✔ · AI Provider & Routing ✔ · Approval Center ✔ · Activity Logs ✔ · Settings & Security ✔. Thêm ngoài đặc tả: Trung tâm CEO, Văn phòng studio, Hộp thư CEO, Pipeline, Sổ bài học, Giới hạn lượt chạy. Giao diện dùng CSS thường (không Tailwind). **Chưa kiểm thử đầy đủ trên điện thoại.**
+
+## Phần 8–9 — Tech stack & Database
 | Hạng mục | Trạng thái |
 |---|---|
-| Pipeline 12 bước liên phòng ban (Research → Concept → GDD → Feasibility → Art/Audio/Monetization → Prototype → QA → Compliance → Release prep → Marketing) | Implemented |
-| Truyền kết quả bước trước vào prompt bước sau | Implemented |
-| Cổng phê duyệt chủ studio (GDD, Prototype, Release prep) | Implemented |
-| Màn hình “Văn phòng studio”: 14 phòng ban dạng tranh minh họa, trạng thái trực tiếp, bấm phòng để xem việc/giao việc | Implemented |
-| Hộp thư CEO: nhiệm vụ xong/thất bại báo về CEO; CEO chấp nhận / yêu cầu sửa lại (giao lại kèm phản hồi) / chuyển phòng khác (QA, DevOps…) / bỏ qua; CEO AI tổng hợp & đề xuất quyết định (người vẫn quyết) | Implemented |
-| Thư viện tài sản: tải/ghi nhận hình, âm thanh, phông, mô hình 3D kèm nguồn gốc & giấy phép; cảnh báo thiếu giấy phép; chỉ duyệt khi hết vấn đề (owner); nhờ phòng Bản quyền rà soát | Implemented (không có tạo ảnh/âm thanh bằng AI) |
-| Giao một nhiệm vụ cho nhiều phòng ban cùng lúc (ghi chú riêng từng phòng, tùy chọn chạy ngay) | Implemented |
-| Mẫu nhiệm vụ theo phòng ban (≈35 mẫu: GDD, Art Bible, test case, kế hoạch ra mắt…), giao nhanh từ Văn phòng studio hoặc chọn trong Task Center | Implemented |
-| Trang chuyên sâu riêng cho từng phòng ban (workflow nhiều bước riêng) | Not Implemented |
-| Sinh ảnh/âm thanh thật, build Godot, Telegram | Not Implemented |
+| FastAPI, Pydantic, SQLAlchemy, Alembic (9 migration), SQLite WAL, React+TS+Vite, task engine trong tiến trình | Implemented |
+| PostgreSQL | Not tested (chỉ SQLite được kiểm thử) |
+| Godot 4 / GDScript, workspace riêng mỗi game | Implemented (game mẫu; chưa chạy thử trong Godot thật) |
+| Thực thể có: User, Project, Department, Agent, ProviderConfig, Task, TaskDependency, TaskAttempt, Approval, AuditLog, Asset, Budget, UsageRecord, ProjectDocument, TestCase, TestRun, GameBuild, ChecklistState, FinanceRecord, AnalyticsReport (+ FileChange, CeoReview, Lesson) | Implemented |
+| Thực thể không tạo (tránh schema trang trí): Role/Permission/AgentPermission (vai trò là enum), ProjectMember, ModelConfig/RoutingPolicy (routing nằm trong cấu hình provider + phòng ban), AssetVersion/AssetLicense (giấy phép là trường của Asset; chưa có phiên bản tài sản), IntegrationConfig, CostRecord (gộp vào FinanceRecord), RevenueRecord (gộp), Notification (thông báo được tính trực tiếp ở Trung tâm CEO, không lưu), GameBuild có | Not Implemented / merged |
+| Backup/restore SQLite: tự động + thủ công + nút khôi phục (owner) | Implemented |
+
+## Phần 10 — Bảo mật & ngân sách
+Phân quyền ở backend, audit log, che khóa trong log/giao diện/kết quả, không gửi dữ liệu nhạy cảm tới provider chưa cấp quyền, Emergency Stop, không tự xóa dữ liệu (xóa đều cần owner/xác nhận), không agent đọc cả ổ đĩa (thư mục gốc cho phép), sửa file chỉ sau khi owner Áp dụng — **Implemented**. Giới hạn theo studio/dự án/phòng ban/provider/model/nhiệm vụ × ngày/tháng/tổng, cảnh báo và chặn — Implemented (đơn vị: lượt chạy).
+
+## Phần 11 — Kiếm tiền & phát hành
+| Hạng mục | Trạng thái |
+|---|---|
+| Sổ doanh thu/chi phí, doanh thu chỉ tính khi owner xác nhận, không giả lập doanh thu | Implemented |
+| Checklist phát hành, owner duyệt, “released” bị chặn nếu checklist chưa đạt, hệ thống không tự phát hành | Implemented |
+| Kế hoạch kiếm tiền cho game mẫu | Implemented (tài liệu; không có số liệu) |
+| Adapter quảng cáo, IAP, analytics SDK, crash reporting, App Store Connect/Google Play | Not Implemented (cần tài khoản/SDK thật; chưa cấu hình) |
+
+## Phần 12 — Bản quyền
+Hồ sơ nguồn gốc tài sản (tên, dự án, nguồn, tác giả, giấy phép, tệp, trạng thái duyệt), cảnh báo thiếu nguồn/giấy phép, tài sản AI phải ghi công cụ/prompt, chỉ owner duyệt — **Implemented**. Thiếu: phiên bản tài sản, trường “quyền thương mại” riêng, đính kèm bằng chứng/tài liệu nguồn — Partially.
+
+## Phần 13 — Các Phase
+| Phase | Trạng thái |
+|---|---|
+| 0 Audit môi trường | Implemented (setup.bat/run.bat kiểm tra Python/Node; xem README) |
+| 1 Core Platform | Implemented (nghiệm thu: chạy được, tạo/sửa dự án, tạo/theo dõi nhiệm vụ, chế độ nội bộ, timeout/lỗi/giới hạn, test) |
+| 2 Phòng ban AI | Implemented trừ Telegram (bỏ qua) và sinh ảnh/âm thanh thật |
+| 3 Game mẫu hoàn chỉnh | Partially — có GDD, gameplay, UI, hình/âm thanh riêng (CC0), lưu kỷ lục, test headless GDScript, hướng dẫn build, mẫu báo cáo lỗi, hồ sơ bản quyền, kế hoạch kiếm tiền; **chưa chạy thử trong Godot, chưa xuất build thật** |
+| 4 Commercial Operations | Partially — có sổ doanh thu/chi phí, analytics nhập tay, checklist & phê duyệt phát hành; chưa có tích hợp quảng cáo/IAP/analytics |
+| 5 Automation & Scale | Partially — đa dự án, lượt chạy tối ưu bằng sổ bài học, giám sát (Trung tâm CEO), khôi phục; chưa tự động hóa việc rủi ro thấp, chưa tối ưu định tuyến model, chưa công cụ ảnh/âm thanh/video, chưa PostgreSQL/queue |
 
 ### Dùng Claude/ChatGPT đã đăng nhập trên máy
 | Hạng mục | Trạng thái |
@@ -51,16 +97,11 @@
 Lưu ý: nút “Chạy các bước sẵn sàng” chỉ chạy **một lượt** mỗi lần bấm (kiểm soát chi phí); bấm lại để chạy lượt kế tiếp.
 
 ## Các bước tiếp theo (ưu tiên)
-1. Đăng nhập Claude Code/Codex, kiểm tra kết nối, chạy nhiệm vụ thật.
-2. (đã xong) Alembic migrations + sao lưu.
-3. Phase 2: workflow riêng từng phòng ban (Market Research → Game Design → Game Dev → QA → …) và các trang còn lại (Asset Library, Telegram…).
-4. Phase 3: game 2D mẫu bằng Godot 4 (GDD, gameplay, tài sản riêng, hồ sơ bản quyền).
-5. Telegram bot có xác thực user ID, Phase 4–5 theo đặc tả.
+1. **Kiểm thử thật** (sau khi bạn khởi động lại): đăng nhập Claude Code/Codex → Kiểm tra kết nối → chạy một nhiệm vụ; thử Hộp thư CEO, Sổ bài học, Thư viện tài sản, các trang phòng ban.
+2. Mở game Coin Dash trong Godot 4, chạy `godot --headless --path . --script tests/run_tests.gd`, sửa lỗi nếu có, xuất build.
+3. Tích hợp quảng cáo/analytics qua adapter khi có tài khoản thật (Phase 4).
+4. Telegram bot có xác thực user ID (khi chủ studio muốn).
+5. Bổ sung: phiên bản tài sản, bằng chứng giấy phép, backlog dạng bảng, ProjectMember, PostgreSQL.
 
-- Quản lý việc được giao (Task Center): thanh tiến độ tổng/theo dự án/theo phòng ban (tự cập nhật 6 giây), lọc theo dự án/phòng ban/trạng thái, sửa, xóa từng việc hoặc xóa hàng loạt (không xóa việc đang chạy; giữ lịch sử sửa file và số lượt chạy) — Implemented.
-
-- Game mẫu Godot 4 “Coin Dash” (`samples/godot-coin-dash`): mã GDScript, tài sản tự tạo CC0, GDD, hồ sơ bản quyền; nút “Tạo dự án mẫu Godot” tạo dự án và đăng ký tài sản — Implemented (kiểm tra tĩnh; **chưa chạy thử trong Godot thật**).
-
-- Sổ bài học theo phòng ban: ghi chú của CEO khi Chấp nhận/Sửa lại → bài học chờ duyệt; bài đang dùng được chèn gọn (≤8 bài, ≤1500 ký tự) vào prompt nhiệm vụ sau của phòng đó; phạm vi theo dự án hoặc mọi dự án; che khóa; giới hạn 30 bài/phòng — Implemented.
-
-- Trung tâm CEO (trang mặc định): gom mọi việc cần chủ studio xử lý (kết quả chờ quyết định, nhiệm vụ lỗi, phê duyệt, sửa file chờ áp dụng, tài sản có vấn đề bản quyền, bài học chờ duyệt, lượt chạy gần/đã đầy, AI chưa đăng nhập, nhiệm vụ treo, Emergency Stop, sao lưu cũ), xếp theo mức khẩn, mỗi mục kèm “Bạn cần làm” từng bước; thanh cảnh báo khẩn trên mọi trang, huy hiệu ở thanh bên, số việc trên tiêu đề tab, thông báo trình duyệt khi có việc mới, nhãn MỚI — Implemented. Nhiệm vụ lỗi hiển thị hộp hướng dẫn khắc phục (đăng nhập, hết lượt, timeout, thiếu chương trình…) và sửa được AI/timeout/token.
+## Tính năng bổ sung đã làm (ngoài đặc tả)
+Trung tâm CEO + thông báo khẩn + hướng dẫn khắc phục · Sổ bài học theo phòng ban · Đánh giá chéo Claude↔Codex · Quản lý nhiệm vụ (tiến độ/sửa/xóa) · Nhập dự án từ GitHub/thư mục · Sửa file trên máy có duyệt · Truy cập online qua Tailscale (`online.bat`) · Dự án mẫu Godot.

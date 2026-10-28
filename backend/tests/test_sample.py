@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 def test_sample_project_is_created_with_files_and_clean_assets(client):
     r = client.post("/api/samples/godot-coin-dash")
-    assert r.status_code == 201 and r.json()["assets"] == 6
+    assert r.status_code == 201 and r.json()["assets"] == 6 and r.json()["documents"] == 5 and r.json()["test_cases"] == 12
     pid = r.json()["project_id"]
     ws = Path(client.get(f"/api/projects/{pid}").json()["workspace_path"])
     for f in ("project.godot", "main.tscn", "scripts/main.gd", "scripts/player.gd", "scripts/coin.gd", "docs/GDD.md", "docs/COPYRIGHT.md", "assets/coin.png"):
@@ -16,6 +16,9 @@ def test_sample_project_is_created_with_files_and_clean_assets(client):
     a = client.get(f"/api/projects/{pid}/assets").json()
     assert a["summary"]["total"] == 6 and a["summary"]["with_problems"] == 0 and a["summary"]["ai_generated"] == 0
     assert all(i["source"] == "own" and i["has_file"] and i["status"] == "draft" for i in a["items"])
+    assert len(client.get(f"/api/projects/{pid}/documents").json()["items"]) == 5
+    tc = client.get(f"/api/projects/{pid}/test-cases").json()
+    assert tc["summary"]["total"] == 12 and tc["summary"]["not_run"] == 12 and tc["summary"]["passed"] == 0   # chưa ai chạy → không Passed
     aid = a["items"][0]["id"]
     assert client.post(f"/api/assets/{aid}/decision", json={"status": "approved"}).status_code == 200  # không có vấn đề → duyệt được
     assert client.get(f"/api/assets/{aid}/file").status_code == 200
@@ -60,3 +63,29 @@ def test_sample_sources_are_consistent():
                 assert w.getnframes() > 1000 and w.getframerate() == 22050
     for c in ("COPYRIGHT.md", "GDD.md"):
         assert (SAMPLE / "docs" / c).read_text(encoding="utf-8").strip()
+
+
+def test_sample_level_is_playable_by_static_geometry():
+    """Kiểm tra tĩnh dữ liệu màn chơi trong main.gd: xu nằm trong thế giới, không nằm trong bậc, và nhảy tới được."""
+    import re
+    src = (SAMPLE / "scripts" / "main.gd").read_text(encoding="utf-8")
+    plats = [tuple(map(float, m)) for m in re.findall(r"\[(\d+), (\d+), (\d+), (\d+)\]", src.split("const PLATFORMS")[1].split("const COINS")[0])]
+    coins = [tuple(map(float, m)) for m in re.findall(r"Vector2\((\d+), (\d+)\)", src.split("const COINS")[1].split("var player")[0])]
+    assert len(plats) == 7 and len(coins) == 12
+    jump = float(re.search(r"JUMP_VELOCITY := -(\d+)", (SAMPLE / "scripts" / "player.gd").read_text()).group(1))
+    grav = float(re.search(r"GRAVITY := (\d+)", (SAMPLE / "scripts" / "player.gd").read_text()).group(1))
+    reach = jump * jump / (2 * grav)                      # độ cao nhảy tối đa
+    tops = sorted(cy - h / 2 for cx, cy, w, h in plats)   # đỉnh các bậc (y nhỏ = cao)
+    ground = max(tops)
+    assert ground - min(t for t in tops if t < ground) > reach            # có bậc cao hơn một cú nhảy từ đất → cần bắc cầu bằng bậc khác
+    for cx, cy in coins:
+        assert 0 < cx < 1280 and 0 < cy < 360
+        assert not any(px - w / 2 <= cx <= px + w / 2 and py - h / 2 <= cy <= py + h / 2 for px, py, w, h in plats), (cx, cy)
+    # mỗi bậc phải có một bậc/đất khác thấp hơn không quá `reach` và gần theo chiều ngang (<= 200px)
+    for cx, cy, w, h in plats:
+        top = cy - h / 2
+        if top >= ground:
+            continue
+        assert any(0 < (ot - top) <= reach and abs(ox - cx) <= 200 + (w + ow) / 2 for ox, oy, ow, oh in plats for ot in [oy - oh / 2] if (ox, oy) != (cx, cy)) or ground - top <= reach, (cx, cy)
+    t = (SAMPLE / "tests" / "run_tests.gd").read_text(encoding="utf-8")
+    assert "Progress.record" in t and "quit(1 if _failed > 0 else 0)" in t

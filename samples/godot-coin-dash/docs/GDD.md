@@ -23,10 +23,10 @@ Chạy và nhảy qua các bậc đất để nhặt đủ 12 đồng xu trướ
 Tốc độ 150 px/s · lực nhảy −370 · trọng lực 900 · 12 xu · giới hạn 60 giây. Một cú nhảy lên cao tối đa khoảng 76 px; bậc cao nhất cách mặt đất khoảng 136 px nên phải nhảy từng bậc (khoảng cách giữa các bậc ≤ 66 px).
 
 ## Phạm vi (MVP) và ngoài phạm vi
-Có: một màn, HUD, 2 hiệu ứng âm thanh, khởi động lại. Chưa có: nhạc nền, menu, lưu điểm cao, nhiều màn, kẻ địch.
+Có: một màn, HUD, 2 hiệu ứng âm thanh, khởi động lại, **lưu kỷ lục** (`user://coin_dash.cfg`). Chưa có: nhạc nền, menu, nhiều màn, kẻ địch.
 
 ## Ý tưởng mở rộng cho các phòng ban
-- Game Design: thêm kẻ địch, xu đặc biệt, bảng điểm cao.
+- Game Design: thêm kẻ địch, xu đặc biệt, bảng xếp hạng.
 - Art/Audio: hoạt ảnh chạy/nhảy, nhạc nền (ghi nguồn gốc vào Thư viện tài sản).
 - QA: kiểm thử khả năng chạm tới mọi xu; kiểm thử trên màn hình tỉ lệ khác 16:9.
-- Monetization: chưa áp dụng (game mẫu miễn phí).
+- Monetization: xem `docs/MONETIZATION.md`.

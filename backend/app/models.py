@@ -285,3 +285,131 @@ class SystemSetting(Base):
     __tablename__ = "system_settings"
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[str] = mapped_column(Text, default="")
+
+
+# ---------- Sản xuất: tài liệu, kiểm thử, build, tài chính, analytics ----------
+DOC_KINDS = ["gdd", "market_report", "design", "art_bible", "audio_bible", "tech", "qa_report", "monetization",
+             "marketing", "store_listing", "legal", "release_notes", "other"]
+TEST_STATUSES = ["not_run", "passed", "failed", "blocked"]
+SEVERITIES = ["low", "medium", "high", "critical"]
+BUILD_PLATFORMS = ["windows", "linux", "macos", "android", "ios", "web", "other"]
+BUILD_STATUSES = ["planned", "ready", "failed", "released"]
+FINANCE_KINDS = ["cost", "revenue"]
+
+
+class ProjectDocument(Base, Stamped):
+    """Tài liệu dự án (GDD, Art Bible, báo cáo…) có phiên bản; mỗi lần lưu là một phiên bản mới."""
+    __tablename__ = "project_documents"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(20), default="other")
+    title: Mapped[str] = mapped_column(String(200))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    content: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(10), default="draft")  # draft|approved
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), nullable=True)
+    created_by: Mapped[str] = mapped_column(String(64), default="")
+    __table_args__ = (
+        CheckConstraint(_in("kind", DOC_KINDS), name="ck_doc_kind"),
+        CheckConstraint(_in("status", ["draft", "approved"]), name="ck_doc_status"),
+        UniqueConstraint("project_id", "title", "version", name="uq_doc_version"),
+    )
+
+
+class TestCase(Base, Stamped):
+    __test__ = False  # không phải lớp test của pytest
+    __tablename__ = "test_cases"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    area: Mapped[str] = mapped_column(String(60), default="")
+    steps: Mapped[str] = mapped_column(Text, default="")
+    expected: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(10), default="not_run")  # chỉ đổi khi có TestRun thật
+    last_run_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    created_by: Mapped[str] = mapped_column(String(64), default="")
+    __table_args__ = (CheckConstraint(_in("status", TEST_STATUSES), name="ck_test_status"),)
+
+
+class TestRun(Base):
+    __test__ = False
+    __tablename__ = "test_runs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    test_case_id: Mapped[int] = mapped_column(ForeignKey("test_cases.id"), index=True)
+    status: Mapped[str] = mapped_column(String(10))  # passed|failed|blocked
+    severity: Mapped[str] = mapped_column(String(10), default="")
+    notes: Mapped[str] = mapped_column(Text, default="")  # báo cáo lỗi khi failed
+    build_id: Mapped[int | None] = mapped_column(ForeignKey("game_builds.id"), nullable=True)
+    run_by: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    __table_args__ = (
+        CheckConstraint(_in("status", ["passed", "failed", "blocked"]), name="ck_run_status"),
+        CheckConstraint("severity = '' OR " + _in("severity", SEVERITIES), name="ck_run_severity"),
+    )
+
+
+class GameBuild(Base, Stamped):
+    __tablename__ = "game_builds"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    version: Mapped[str] = mapped_column(String(40))
+    platform: Mapped[str] = mapped_column(String(12), default="windows")
+    status: Mapped[str] = mapped_column(String(10), default="planned")
+    file_path: Mapped[str] = mapped_column(String(300), default="")  # tương đối so với workspace; rỗng = chưa có tệp
+    changelog: Mapped[str] = mapped_column(Text, default="")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    created_by: Mapped[str] = mapped_column(String(64), default="")
+    __table_args__ = (
+        CheckConstraint(_in("platform", BUILD_PLATFORMS), name="ck_build_platform"),
+        CheckConstraint(_in("status", BUILD_STATUSES), name="ck_build_status"),
+        UniqueConstraint("project_id", "version", "platform", name="uq_build"),
+    )
+
+
+class ChecklistState(Base):
+    """Trạng thái các mục checklist phát hành do con người xác nhận (mục tự động được tính từ dữ liệu thật)."""
+    __tablename__ = "checklist_states"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    key: Mapped[str] = mapped_column(String(40))
+    done: Mapped[bool] = mapped_column(Boolean, default=False)
+    note: Mapped[str] = mapped_column(String(300), default="")
+    by: Mapped[str] = mapped_column(String(64), default="")
+    at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    __table_args__ = (UniqueConstraint("project_id", "key", name="uq_checklist"),)
+
+
+class FinanceRecord(Base, Stamped):
+    """Chi phí / doanh thu do con người nhập. Doanh thu chỉ được tính sau khi chủ studio xác nhận."""
+    __tablename__ = "finance_records"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True, index=True)
+    kind: Mapped[str] = mapped_column(String(8))
+    category: Mapped[str] = mapped_column(String(30), default="other")
+    amount_cents: Mapped[int] = mapped_column(Integer)
+    currency: Mapped[str] = mapped_column(String(3), default="USD")
+    occurred_on: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD
+    note: Mapped[str] = mapped_column(String(300), default="")
+    estimated: Mapped[bool] = mapped_column(Boolean, default=False)   # chi phí ước tính (chưa phát sinh thật)
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by: Mapped[str] = mapped_column(String(64), default="")
+    confirmed_by: Mapped[str] = mapped_column(String(64), default="")
+    __table_args__ = (
+        CheckConstraint(_in("kind", FINANCE_KINDS), name="ck_fin_kind"),
+        CheckConstraint("amount_cents > 0", name="ck_fin_amount"),
+    )
+
+
+class AnalyticsReport(Base, Stamped):
+    """Báo cáo phân tích từ dữ liệu thật do con người nhập: bắt buộc ghi nguồn, khoảng thời gian và hạn chế."""
+    __tablename__ = "analytics_reports"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    source: Mapped[str] = mapped_column(String(200))
+    period_start: Mapped[str] = mapped_column(String(10))
+    period_end: Mapped[str] = mapped_column(String(10))
+    metrics: Mapped[str] = mapped_column(Text, default="{}")  # JSON: tên chỉ số → số
+    limitations: Mapped[str] = mapped_column(Text)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    created_by: Mapped[str] = mapped_column(String(64), default="")

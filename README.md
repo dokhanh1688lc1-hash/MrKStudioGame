@@ -29,6 +29,10 @@ Hệ thống chỉ dùng **Claude Code** và **Codex (ChatGPT)** đã cài và �
 
 Việc dùng tính vào hạn mức gói thuê bao của bạn, không tính USD theo token; dùng “Giới hạn lượt chạy” để không cạn hạn mức. Ứng dụng desktop ChatGPT/Claude không điều khiển được; chỉ hai công cụ dòng lệnh này.
 
+## Các trang chính
+Trung tâm CEO (việc cần bạn xử lý + cách xử lý) · Studio Manager (mọi dự án, tạm dừng/tiếp tục) · Văn phòng studio · Hộp thư CEO · Task Center (tiến độ, sửa, xóa) · 13 trang phòng ban (tài liệu có phiên bản, test case & lỗi, build & checklist phát hành, chi phí/doanh thu, analytics nhập tay) · Thư viện tài sản (nguồn gốc & giấy phép) · Sổ bài học · Dự án mẫu Godot “Coin Dash” (nút ở trang Dự án).
+Trạng thái từng hạng mục so với đặc tả: xem `docs/ROADMAP.md`.
+
 ## Dự án đang làm dở (sửa / nâng cấp)
 Trang **Dự án** → nút **Sửa** để đổi thông tin; nút **Mã nguồn** để nhập dự án có sẵn từ **GitHub**, từ **thư mục trên máy** (chủ studio khai báo thư mục cho phép ở Cài đặt → “Thư mục dự án trên máy”) hoặc tải lên .zip (ví dụ tải từ Claude) / từng tệp; bấm “Cập nhật lại từ nguồn” để lấy bản mới. Nhập vào là SAO CHÉP. Muốn AI sửa file thật trên máy: liên kết thư mục, chủ studio bật “Cho phép ghi”, AI đề xuất → bạn xem diff → Áp dụng (có sao lưu và Hoàn tác). Sau đó
 xem tệp, rồi tạo nhiệm vụ **Phân tích & nâng cấp** cho AI. AI trả báo cáo/đoạn mã đề xuất; hệ thống không tự sửa tệp của bạn.
