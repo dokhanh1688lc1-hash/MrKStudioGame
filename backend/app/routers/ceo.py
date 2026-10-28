@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..deps import Principal, current_user, get_db, require
 from ..models import Agent, CeoReview, Department, Project, Task, TaskDependency
+from ..services import attention as attention_svc
 from ..services import lessons as lessons_svc
 from ..services.common import audit, get_bool
 
@@ -42,6 +43,12 @@ def _item(s: Session, t: Task, r: CeoReview | None) -> dict:
             "decision": r.decision if r else None, "note": r.note if r else "",
             "followup_task_id": r.followup_task_id if r else None,
             "decided_by": r.decided_by if r else None, "decided_at": r.decided_at if r else None}
+
+
+@router.get("/attention")
+def attention(request: Request, _: Principal = Depends(current_user), s: Session = Depends(get_db)):
+    """Mọi việc đang cần chủ studio xử lý, xếp theo mức khẩn, kèm các bước cần làm."""
+    return attention_svc.build(s, request.app.state.registry, request.app.state.settings.data_dir)
 
 
 @router.get("/inbox")

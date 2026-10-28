@@ -365,16 +365,28 @@ export function Tasks({ role }: Role) {
             {detail.data && (
               <>
                 <p><Badge v={detail.data.status} /> {detail.data.title}
-                  {canEdit(role) && detail.data.status !== "Running" && <> · <button className="btn ghost" onClick={() => setEdit({ id: detail.data.id, title: detail.data.title, objective: detail.data.objective, expected_output: detail.data.expected_output, acceptance_criteria: detail.data.acceptance_criteria })}>Sửa nhiệm vụ</button></>}</p>
+                  {canEdit(role) && detail.data.status !== "Running" && <> · <button className="btn ghost" onClick={() => setEdit({ id: detail.data.id, title: detail.data.title, objective: detail.data.objective, expected_output: detail.data.expected_output, acceptance_criteria: detail.data.acceptance_criteria, timeout_s: detail.data.timeout_s, max_output_tokens: detail.data.max_output_tokens, provider: detail.data.provider ?? "" })}>Sửa nhiệm vụ</button></>}</p>
                 {edit && edit.id === detail.data.id && (
-                  <form className="card" onSubmit={async (e) => { e.preventDefault(); const { id, ...body } = edit; await run(() => api(`/tasks/${id}`, { method: "PATCH", body }), "Đã lưu thay đổi."); setEdit(null); refresh(); }}>
+                  <form className="card" onSubmit={async (e) => { e.preventDefault(); const { id, ...body } = edit; await run(() => api(`/tasks/${id}`, { method: "PATCH", body: { ...body, provider: body.provider || null, timeout_s: Number(body.timeout_s), max_output_tokens: Number(body.max_output_tokens) } }), "Đã lưu thay đổi."); setEdit(null); refresh(); }}>
                     <Field label="Tiêu đề"><input value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} required /></Field>
                     <Field label="Mục tiêu"><textarea value={edit.objective} onChange={(e) => setEdit({ ...edit, objective: e.target.value })} required /></Field>
                     <Field label="Đầu ra mong muốn"><textarea value={edit.expected_output} onChange={(e) => setEdit({ ...edit, expected_output: e.target.value })} /></Field>
                     <Field label="Tiêu chí nghiệm thu"><textarea value={edit.acceptance_criteria} onChange={(e) => setEdit({ ...edit, acceptance_criteria: e.target.value })} /></Field>
+                    <div className="row">
+                      <Field label="AI thực hiện"><select value={edit.provider} onChange={(e) => setEdit({ ...edit, provider: e.target.value })}>
+                        <option value="">Tự động theo routing</option><option value="claude_cli">Claude Code</option><option value="codex_cli">Codex (ChatGPT)</option><option value="internal">Nội bộ (mẫu)</option></select></Field>
+                      <Field label="Thời gian chờ (giây, ≤600)"><input type="number" min={1} max={600} value={edit.timeout_s} onChange={(e) => setEdit({ ...edit, timeout_s: e.target.value })} /></Field>
+                      <Field label="Số token đầu ra tối đa"><input type="number" min={16} max={32000} value={edit.max_output_tokens} onChange={(e) => setEdit({ ...edit, max_output_tokens: e.target.value })} /></Field>
+                    </div>
                     <p className="row tight"><button className="btn" disabled={busy}>Lưu</button><button type="button" className="btn ghost" onClick={() => setEdit(null)}>Đóng</button></p>
                   </form>)}
                 {detail.data.error && <div className="msg err">{detail.data.error}</div>}
+                {detail.data.help && (
+                  <div className="helpbox"><b>⚠ {detail.data.help.title}</b>
+                    <div className="muted">{detail.data.error}</div>
+                    <b>Bạn cần làm:</b><ol>{detail.data.help.steps.map((st: string, n: number) => <li key={n}>{st}</li>)}</ol>
+                    {detail.data.help.page && detail.data.help.page !== "tasks" && <a className="btn ghost" href={`#${detail.data.help.page}`}>Đi tới trang cần xử lý →</a>}
+                  </div>)}
                 {detail.data.result && (
                   <>
                     <p className="muted">Kết quả do: <b>{detail.data.result_source}</b>

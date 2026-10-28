@@ -120,6 +120,9 @@ class TaskPatch(BaseModel):
     expected_output: str | None = None
     acceptance_criteria: str | None = None
     requires_approval: bool | None = None
+    provider: ProviderName | None = None   # gửi null = theo routing
+    timeout_s: int | None = Field(default=None, ge=1, le=600)
+    max_output_tokens: int | None = Field(default=None, ge=16, le=32000)
 
 
 class BulkTaskIn(BaseModel):
@@ -187,6 +190,7 @@ class TaskOut(ORM):
 class TaskDetail(TaskOut):
     attempts: list[AttemptOut] = []
     depends_on: list[int] = []
+    help: dict | None = None   # hướng dẫn "bạn cần làm gì" khi nhiệm vụ lỗi
 
 
 class ProviderOut(BaseModel):

@@ -62,3 +62,5 @@ Lưu ý: nút “Chạy các bước sẵn sàng” chỉ chạy **một lượt
 - Game mẫu Godot 4 “Coin Dash” (`samples/godot-coin-dash`): mã GDScript, tài sản tự tạo CC0, GDD, hồ sơ bản quyền; nút “Tạo dự án mẫu Godot” tạo dự án và đăng ký tài sản — Implemented (kiểm tra tĩnh; **chưa chạy thử trong Godot thật**).
 
 - Sổ bài học theo phòng ban: ghi chú của CEO khi Chấp nhận/Sửa lại → bài học chờ duyệt; bài đang dùng được chèn gọn (≤8 bài, ≤1500 ký tự) vào prompt nhiệm vụ sau của phòng đó; phạm vi theo dự án hoặc mọi dự án; che khóa; giới hạn 30 bài/phòng — Implemented.
+
+- Trung tâm CEO (trang mặc định): gom mọi việc cần chủ studio xử lý (kết quả chờ quyết định, nhiệm vụ lỗi, phê duyệt, sửa file chờ áp dụng, tài sản có vấn đề bản quyền, bài học chờ duyệt, lượt chạy gần/đã đầy, AI chưa đăng nhập, nhiệm vụ treo, Emergency Stop, sao lưu cũ), xếp theo mức khẩn, mỗi mục kèm “Bạn cần làm” từng bước; thanh cảnh báo khẩn trên mọi trang, huy hiệu ở thanh bên, số việc trên tiêu đề tab, thông báo trình duyệt khi có việc mới, nhãn MỚI — Implemented. Nhiệm vụ lỗi hiển thị hộp hướng dẫn khắc phục (đăng nhập, hết lượt, timeout, thiếu chương trình…) và sửa được AI/timeout/token.

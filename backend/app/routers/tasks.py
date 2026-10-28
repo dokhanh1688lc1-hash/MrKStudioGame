@@ -10,6 +10,7 @@ from ..models import (Agent, Approval, CeoReview, Department, FileChange, Lesson
                       TaskDependency, UsageRecord)
 from ..schemas import BulkTaskIn, TaskDetail, TaskIn, TaskOut, TaskPatch
 from ..services.common import EngineError, audit, slugify
+from ..services.guidance import explain_error
 from ..services.templates import all_templates
 from ..services.pipeline import TEMPLATE, create_pipeline, pipeline_tasks
 
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 def _detail(s: Session, t: Task) -> TaskDetail:
     d = TaskDetail.model_validate(t)
+    d.help = explain_error(t.error) if t.status in ("Failed", "Blocked", "Cancelled") or (t.error and t.status != "Completed") else None
     d.depends_on = [x.depends_on_id for x in s.scalars(select(TaskDependency).where(TaskDependency.task_id == t.id))]
     return d
 
@@ -206,6 +208,8 @@ def edit_task(tid: int, body: TaskPatch, user: Principal = Depends(require("mana
         raise HTTPException(409, "Nhiệm vụ đang chạy — hãy hủy trước khi sửa.")
     data = body.model_dump(exclude_unset=True)
     for k, v in data.items():
+        if v is None and k != "provider":   # null chỉ có nghĩa với provider (= theo routing)
+            continue
         setattr(t, k, v)
     audit(s, user.username, "task_edited", "task", t.id, ", ".join(sorted(data)))
     s.commit()
