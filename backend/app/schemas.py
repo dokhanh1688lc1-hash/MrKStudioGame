@@ -63,6 +63,7 @@ class ProjectOut(ORM):
     source_ref: str = ""
     source_branch: str = ""
     source_synced_at: datetime | None = None
+    allow_write: bool = False
     created_at: datetime
     updated_at: datetime
 

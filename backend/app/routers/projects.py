@@ -15,6 +15,7 @@ from ..models import Agent, Department, Project, Task
 from ..schemas import AgentOut, AgentPatch, DepartmentOut, DepartmentPatch, ProjectIn, ProjectOut, ProjectPatch
 from ..services.common import EngineError, audit, slugify
 from ..db import utcnow
+from ..services import changes as ch
 from ..services import sources as src
 from ..services import workspace as wsvc
 
@@ -278,7 +279,7 @@ def upgrade_task(pid: int, body: UpgradeIn, request: Request, user: Principal = 
     p, ws = _ws(request, s, pid)
     if p.status == "Archived":
         raise HTTPException(409, "Dự án đã lưu trữ (Archived).")
-    if body.provider not in (None, "openai", "anthropic", "internal"):
+    if body.provider not in (None, "claude_cli", "codex_cli", "internal"):
         raise HTTPException(422, "Provider không hợp lệ.")
     ctx = wsvc.build_context(ws)
     if ctx.startswith("(Workspace chưa"):
@@ -292,7 +293,8 @@ def upgrade_task(pid: int, body: UpgradeIn, request: Request, user: Principal = 
              context=f"Game: {p.name} ({p.genre or 'chưa rõ thể loại'}, {p.platform or 'chưa rõ nền tảng'})\n\n{ctx}",
              expected_output="1) Hiện trạng. 2) Lỗi/rủi ro (theo mức nghiêm trọng, ghi rõ tệp). "
                              "3) Kế hoạch sửa/nâng cấp theo thứ tự ưu tiên. 4) Đoạn mã đề xuất cụ thể cho từng thay đổi quan trọng. "
-                             "Chỉ dựa trên mã nguồn đã cung cấp; nêu rõ phần nào chưa đủ thông tin.",
+                             "Chỉ dựa trên mã nguồn đã cung cấp; nêu rõ phần nào chưa đủ thông tin."
+                             + ("\n\n" + ch.FORMAT_HELP if p.source_type == "folder" else ""),
              acceptance_criteria="Mỗi nhận định nêu tệp liên quan; không bịa tệp hoặc hàm không có trong ngữ cảnh.",
              provider=body.provider, sensitive=body.sensitive, max_output_tokens=4000, timeout_s=180)
     s.add(t)

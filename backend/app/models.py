@@ -50,6 +50,7 @@ class Project(Base, Stamped):
     source_ref: Mapped[str] = mapped_column(String(500), default="")      # URL repo hoặc đường dẫn thư mục
     source_branch: Mapped[str] = mapped_column(String(100), default="")
     source_synced_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    allow_write: Mapped[bool] = mapped_column(Boolean, default=False)   # cho phép ghi vào thư mục gốc trên máy
     tasks: Mapped[list["Task"]] = relationship(back_populates="project")
     __table_args__ = (CheckConstraint(_in("status", PROJECT_STATUSES), name="ck_project_status"),)
 
@@ -119,6 +120,26 @@ class Task(Base, Stamped):
         CheckConstraint(_in("status", TASK_STATUSES), name="ck_task_status"),
         Index("ix_tasks_project_status", "project_id", "status"),
     )
+
+
+class FileChange(Base):
+    """Đề xuất sửa một tệp trong thư mục dự án trên máy. Chỉ ghi sau khi chủ studio bấm Áp dụng."""
+    __tablename__ = "file_changes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), nullable=True)
+    path: Mapped[str] = mapped_column(String(400))
+    new_content: Mapped[str] = mapped_column(Text)
+    base_sha: Mapped[str] = mapped_column(String(64), default="")      # "" = tệp mới
+    applied_sha: Mapped[str] = mapped_column(String(64), default="")
+    backup_path: Mapped[str] = mapped_column(String(600), default="")
+    status: Mapped[str] = mapped_column(String(12), default="pending", index=True)  # pending|applied|rejected|reverted
+    source: Mapped[str] = mapped_column(String(12), default="ai")      # ai|manual
+    created_by: Mapped[str] = mapped_column(String(64), default="")
+    decided_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    __table_args__ = (CheckConstraint(_in("status", ["pending", "applied", "rejected", "reverted"]), name="ck_fchange_status"),)
 
 
 class TaskDependency(Base):

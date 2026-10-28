@@ -35,3 +35,10 @@ Giới hạn đã biết: token không thu hồi được trước hạn; chưa 
 - Thư mục máy: chỉ đọc được trong các **thư mục gốc được phép** (chủ studio khai báo ở Cài đặt; cấm cả ổ đĩa). Đường dẫn được giải thật (`resolve`) nên `..` và symlink thoát ra ngoài đều bị chặn. Lưu ý: khi mở ứng dụng ra internet, tài khoản `manager` đọc được mọi thứ trong các thư mục này — chỉ khai báo thư mục cần thiết.
 - GitHub: chỉ nhận `https://github.com/<chủ>/<repo>` (không `http`, `ssh`, `file`, host khác, user:pass trong URL); nhánh kiểm tra regex; git chạy không qua shell, có `--`, `GIT_TERMINAL_PROMPT=0`, timeout 240 giây, clone nông, không submodule. Repo riêng tư dùng đăng nhập git sẵn có trên máy; hệ thống không lưu token.
 - Bỏ qua `.git`, `node_modules`, symlink, tệp bí mật (`.env`, `*.pem`, `*.key`…); tối đa 5000 tệp / 300 MB mỗi lần nhập.
+
+## Sửa file trên máy (ghi ngược vào thư mục dự án)
+- Mặc định **tắt**. Chủ studio bật theo từng dự án; chỉ dự án liên kết thư mục máy (nằm trong thư mục gốc cho phép) mới ghi được. Gỡ thư mục khỏi danh sách cho phép là chặn ghi ngay.
+- AI không ghi trực tiếp: chỉ tạo *đề xuất*. Ghi chỉ xảy ra khi chủ studio (owner) bấm Áp dụng; Emergency Stop chặn cả Áp dụng và Hoàn tác.
+- Chỉ tệp văn bản/mã nguồn có đuôi trong danh sách cho phép; chặn `.env`, khóa, `.bat/.cmd/.ps1/.sh/.exe/.dll…`, `.git`, `node_modules`; không xóa tệp; chặn `..`, đường dẫn tuyệt đối, ổ đĩa, symlink ở mọi cấp; tối đa 1 MB/tệp, 50 tệp/lần trích.
+- Trước khi ghi: so sha256 với bản lúc đề xuất (tệp đã đổi → từ chối, không ghi đè công việc của bạn); sao lưu bản gốc vào `data/file-backups/`; ghi nguyên tử; giữ kiểu xuống dòng CRLF/LF. Hoàn tác chỉ chạy khi tệp chưa bị sửa tiếp.
+- Mọi hành động có audit log (đề xuất, áp dụng, từ chối, hoàn tác, bật/tắt quyền ghi).

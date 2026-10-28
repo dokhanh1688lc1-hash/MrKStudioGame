@@ -93,3 +93,9 @@ pre.out { white-space: pre-wrap; background: var(--panel2); border: 1px solid va
 @media (prefers-reduced-motion: reduce) { .ofc-typing > *, .ofc-pulse, .ofc-eq { animation: none; } }
 @media (max-width: 1100px) { .ofc-room, .ofc-room.span3 { grid-column: span 6; } }
 @media (max-width: 640px) { .ofc-room, .ofc-room.span3 { grid-column: span 12; } }
+
+pre.out.diff { font: 12.5px/1.45 ui-monospace, Consolas, monospace; white-space: pre; }
+.diff .dadd { background: color-mix(in srgb, var(--ok) 22%, transparent); display: block; }
+.diff .ddel { background: color-mix(in srgb, var(--bad) 22%, transparent); display: block; }
+.diff .dhunk { color: var(--accent); display: block; }
+.badge.bad { background: color-mix(in srgb, var(--bad) 25%, transparent); color: var(--bad); padding: 1px 8px; border-radius: 999px; font-size: 12px; }

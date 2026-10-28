@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, upload, useLoad, utc } from "./api";
+import { ChangesPanel } from "./Changes";
 import { ImportRoots, SourcePanel } from "./Sources";
 import { Async, Badge, Empty, Field, Pager, useAction } from "./ui";
 
@@ -138,6 +139,7 @@ function ProjectCode({ project, role, onClose, onChanged }: { project: any; role
     <div className="card">
       <div className="row tight"><b>Mã nguồn dự án: {project.name}</b><button className="btn ghost" onClick={onClose}>Đóng</button></div>
       {banner}
+      <ChangesPanel project={project} role={role} onChanged={() => onChanged?.()} />
       {canEdit(role) && project.status !== "Archived" && <SourcePanel project={project} role={role} onDone={() => { setTick((x) => x + 1); onChanged?.(); }} />}
       {canEdit(role) && project.status !== "Archived" && (
         <>
@@ -174,7 +176,7 @@ function ProjectCode({ project, role, onClose, onChanged }: { project: any; role
                   <label style={{ margin: 0 }}><input type="checkbox" style={{ width: "auto" }} checked={sens} onChange={(e) => setSens(e.target.checked)} /> Mã nguồn nhạy cảm (chỉ gửi provider được cấp quyền)</label>
                   <button className="btn" disabled={busy}>Tạo nhiệm vụ</button>
                 </p>
-                <p className="muted">AI trả về báo cáo, kế hoạch và đoạn mã đề xuất; hệ thống không tự sửa tệp của bạn. Sau khi chạy xong, dùng “Lưu vào workspace” trong chi tiết nhiệm vụ để lưu kết quả thành tệp .md.</p>
+                <p className="muted">AI trả về báo cáo, kế hoạch và đoạn mã đề xuất; không có gì tự ghi vào máy bạn. Với dự án liên kết thư mục trên máy: sau khi chạy xong, bấm “Trích đề xuất sửa file” trong chi tiết nhiệm vụ, xem diff ở mục “Sửa file trên máy” rồi chủ studio bấm Áp dụng. Có thể dùng “Lưu vào workspace” để lưu kết quả thành tệp .md.</p>
               </form>
             )}
           </>
@@ -205,6 +207,7 @@ export function Tasks({ role }: Role) {
     } catch { return blank; }
   });
   const [savedPath, setSavedPath] = useState("");
+  const [extract, setExtract] = useState<any | null>(null);
   const { run, busy, banner } = useAction();
   const refresh = () => setTick((t) => t + 1);
 
@@ -313,7 +316,11 @@ export function Tasks({ role }: Role) {
                   <>
                     <p className="muted">Kết quả do: <b>{detail.data.result_source}</b>
                       {canEdit(role) && <> · <button className="btn ghost" disabled={busy} onClick={() => run(async () => { const r = await api(`/tasks/${detail.data.id}/save-to-workspace`, { method: "POST" }); setSavedPath(r.path); }, "Đã lưu vào workspace dự án.")}>Lưu vào workspace</button></>}
+                      {canEdit(role) && detail.data.status === "Completed" && detail.data.result_source !== "internal" && <> · <button className="btn ghost" disabled={busy} onClick={async () => {
+                        await run(async () => { const r = await api<any>(`/tasks/${detail.data.id}/extract-changes`, { method: "POST" }); setExtract(r); }, "Đã trích đề xuất sửa file. Xem trong Dự án → Mã nguồn → Sửa file trên máy.");
+                      }}>Trích đề xuất sửa file</button></>}
                       {savedPath && <> · <code>{savedPath}</code></>}</p>
+                    {extract && <div className="msg okk">Tạo {extract.created.length} đề xuất.{extract.errors.length > 0 && <> Không dùng được {extract.errors.length}: <ul>{extract.errors.map((m: string, i: number) => <li key={i}>{m}</li>)}</ul></>}</div>}
                     <pre className="out">{detail.data.result}</pre>
                   </>
                 )}

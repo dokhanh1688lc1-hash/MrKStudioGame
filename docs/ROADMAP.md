@@ -41,7 +41,8 @@
 | Nhập dự án có sẵn từ GitHub (shallow clone bằng Git trên máy) hoặc từ thư mục trên máy (chỉ trong thư mục gốc chủ studio cho phép); “Cập nhật lại từ nguồn” | Implemented (GitHub thật chưa thử qua mạng; đã test lệnh git trên repo cục bộ) |
 | Xem cây tệp và nội dung tệp văn bản (che chuỗi giống khóa) | Implemented |
 | Nhiệm vụ “Phân tích & nâng cấp” bằng Game Development AI + lưu kết quả `.md` vào workspace | Implemented |
-| AI tự sửa trực tiếp tệp mã nguồn / áp dụng patch / chạy build | Not Implemented (cố ý: Phase 1–2 AI chỉ trả văn bản; bạn áp dụng thủ công) |
+| Sửa file trên máy: AI/bạn đề xuất (SEARCH/REPLACE hoặc tệp mới) → xem diff → chủ studio Áp dụng; sao lưu, phát hiện xung đột, Hoàn tác, quyền ghi bật theo từng dự án | Implemented (chỉ với dự án liên kết thư mục máy; không xóa tệp) |
+| AI tự ghi không qua duyệt, chạy build/test, git commit/push | Not Implemented (cố ý) |
 | Tải workspace xuống dạng zip, xóa tệp trong workspace | Not Implemented |
 
 Lưu ý: nút “Chạy các bước sẵn sàng” chỉ chạy **một lượt** mỗi lần bấm (kiểm soát chi phí); bấm lại để chạy lượt kế tiếp.
