@@ -37,9 +37,10 @@ def _roots(c, *paths):
     return r.json()
 
 
-def test_folder_import_requires_allowed_roots(client, tree):
+def test_folder_import_requires_allowed_roots_for_non_owner(client, tree):
     p = mk_project(client)
-    r = client.post(f"/api/projects/{p['id']}/import/folder", json={"path": str(tree["game"])})
+    m = _mgr(client, "mgr8")
+    r = m.post(f"/api/projects/{p['id']}/import/folder", json={"path": str(tree["game"])})
     assert r.status_code == 403 and "thư mục gốc" in r.json()["detail"]
 
 
@@ -58,13 +59,23 @@ def test_folder_import_copies_safely(client, tree):
     assert (tree["game"] / ".env").read_text() == "API_KEY=abc"  # thư mục gốc không bị đụng tới
 
 
+def _mgr(client, name="mgr9"):
+    from fastapi.testclient import TestClient
+    assert client.post("/api/users", json={"username": name, "password": "managerpass1", "role": "manager"}).status_code in (200, 201)
+    m = TestClient(client.app)
+    m.headers["Authorization"] = "Bearer " + m.post("/api/auth/login", json={"username": name, "password": "managerpass1"}).json()["token"]
+    return m
+
+
 def test_folder_import_blocks_outside_and_traversal(client, tree, tmp_path):
     p = mk_project(client)
     _roots(client, tree["root"])
+    owner, client = client, _mgr(client)  # chủ studio tự cấp quyền; người quản lý thì bị chặn ngoài vùng
     for bad in (tree["outside"], tree["root"] / ".." / "outside", tmp_path, "/"):
         r = client.post(f"/api/projects/{p['id']}/import/folder", json={"path": str(bad)})
         assert r.status_code == 403, (bad, r.text)
     assert client.post(f"/api/projects/{p['id']}/import/folder", json={"path": str(tree["root"] / "none")}).status_code == 404
+    assert owner.post(f"/api/projects/{p['id']}/import/folder", json={"path": "/"}).status_code == 422  # không cấp cả ổ đĩa
     if (tree["game"] / "link_out").is_symlink():  # symlink trỏ ra ngoài vùng cho phép
         assert client.post(f"/api/projects/{p['id']}/import/folder", json={"path": str(tree["game"] / "link_out")}).status_code == 403
 
@@ -166,15 +177,15 @@ def test_real_git_clone_of_local_repo(tmp_path):
 
 def test_owner_can_grant_and_import_in_one_step(client, tree):
     p = mk_project(client)
-    r = client.post(f"/api/projects/{p['id']}/import/folder", json={"path": str(tree["game"]), "grant": True})
+    r = client.post(f"/api/projects/{p['id']}/import/folder", json={"path": str(tree["game"])})
     assert r.status_code == 201, r.text
     assert str(tree["game"].resolve()) in client.get("/api/system/import-roots").json()["paths"]
-    # thư mục khác ngoài vùng vẫn bị chặn nếu không cấp quyền
+    # người quản lý vẫn bị chặn ngoài vùng đã được chủ studio cấp
     p2 = mk_project(client, "P2")
-    assert client.post(f"/api/projects/{p2['id']}/import/folder", json={"path": str(tree["outside"])}).status_code == 403
+    assert _mgr(client).post(f"/api/projects/{p2['id']}/import/folder", json={"path": str(tree["outside"])}).status_code == 403
 
 
 def test_grant_refuses_drive_root(client, tree):
     p = mk_project(client)
-    r = client.post(f"/api/projects/{p['id']}/import/folder", json={"path": "/", "grant": True})
+    r = client.post(f"/api/projects/{p['id']}/import/folder", json={"path": "/"})
     assert r.status_code == 422

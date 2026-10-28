@@ -206,9 +206,7 @@ def import_folder(pid: int, body: FolderIn, request: Request, user: Principal = 
     p, ws = _ws(request, s, pid)
     _guard_import(p)
     try:
-        if body.grant:
-            if user.role != "owner":
-                raise HTTPException(403, "Chỉ chủ studio được cấp quyền truy cập thư mục mới.")
+        if user.role == "owner":  # chủ studio: tự cấp quyền truy cập thư mục được nhập
             try:
                 resolved = Path(body.path.strip()).resolve(strict=True)
             except (OSError, ValueError):
