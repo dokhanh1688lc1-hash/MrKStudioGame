@@ -167,6 +167,7 @@ class GithubIn(BaseModel):
 
 class FolderIn(BaseModel):
     path: str = Field(min_length=1, max_length=500)
+    grant: bool = False  # chủ studio: tự thêm thư mục này vào vùng được phép rồi nhập (một bước)
 
 
 class RootsIn(BaseModel):
@@ -205,6 +206,18 @@ def import_folder(pid: int, body: FolderIn, request: Request, user: Principal = 
     p, ws = _ws(request, s, pid)
     _guard_import(p)
     try:
+        if body.grant:
+            if user.role != "owner":
+                raise HTTPException(403, "Chỉ chủ studio được cấp quyền truy cập thư mục mới.")
+            try:
+                resolved = Path(body.path.strip()).resolve(strict=True)
+            except (OSError, ValueError):
+                raise HTTPException(404, "Không tìm thấy thư mục này trên máy.")
+            roots = src.get_roots(s)
+            if not src._within(resolved, roots):
+                new = src.set_roots(s, roots + [str(resolved)])
+                audit(s, user.username, "import_roots_changed", "system", "", "cấp quyền: " + str(resolved))
+                s.commit()
         res = src.import_folder(s, ws, body.path)
     except EngineError as e:
         raise HTTPException(e.status, e.message)

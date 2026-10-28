@@ -162,3 +162,19 @@ def test_real_git_clone_of_local_repo(tmp_path):
     assert len(commit) == 40 and (dest / "a.gd").exists()
     with pytest.raises(Exception):
         src._clone(str(tmp_path / "missing"), "", tmp_path / "c2")
+
+
+def test_owner_can_grant_and_import_in_one_step(client, tree):
+    p = mk_project(client)
+    r = client.post(f"/api/projects/{p['id']}/import/folder", json={"path": str(tree["game"]), "grant": True})
+    assert r.status_code == 201, r.text
+    assert str(tree["game"].resolve()) in client.get("/api/system/import-roots").json()["paths"]
+    # thư mục khác ngoài vùng vẫn bị chặn nếu không cấp quyền
+    p2 = mk_project(client, "P2")
+    assert client.post(f"/api/projects/{p2['id']}/import/folder", json={"path": str(tree["outside"])}).status_code == 403
+
+
+def test_grant_refuses_drive_root(client, tree):
+    p = mk_project(client)
+    r = client.post(f"/api/projects/{p['id']}/import/folder", json={"path": "/", "grant": True})
+    assert r.status_code == 422

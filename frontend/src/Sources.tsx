@@ -26,7 +26,9 @@ export function SourcePanel({ project, role, onDone }: { project: any; role: str
   const dirs = useLoad<{ path: string; parent: string; dirs: string[] }>(browsePath !== null ? `/system/browse?path=${encodeURIComponent(browsePath)}` : null);
   const { run, busy, banner } = useAction();
   const linked = project.source_type === "github" || project.source_type === "folder";
-  const noRoots = roots.data && roots.data.paths.length === 0;
+  const noRoots = roots.data && roots.data.paths.length === 0 && role !== "owner";
+  const norm = (x: string) => x.replace(/\//g, "\\").replace(/\\+$/, "").toLowerCase();
+  const outside = role === "owner" && !!path.trim() && !(roots.data?.paths ?? []).some((r) => norm(path) === norm(r) || norm(path).startsWith(norm(r) + "\\"));
 
   return (
     <div className="card" style={{ background: "var(--panel2)" }}>
@@ -67,11 +69,11 @@ export function SourcePanel({ project, role, onDone }: { project: any; role: str
               Chưa có thư mục nào được phép truy cập. {role === "owner" ? "Vào Cài đặt & Bảo mật → “Thư mục dự án trên máy” để thêm thư mục chứa các game của bạn (ví dụ C:\\Games)." : "Nhờ chủ studio thêm trong Cài đặt & Bảo mật."}
             </div>
           )}
-          {roots.data && roots.data.paths.length > 0 && (
+          {roots.data && (roots.data.paths.length > 0 || role === "owner") && (
             <>
-              <p className="muted">Chỉ truy cập được trong: {roots.data.paths.map((p) => <code key={p} style={{ marginRight: 8 }}>{p}</code>)}</p>
+              {roots.data.paths.length > 0 && <p className="muted">Chỉ truy cập được trong: {roots.data.paths.map((p) => <code key={p} style={{ marginRight: 8 }}>{p}</code>)}</p>}
               <div className="row tight" style={{ alignItems: "flex-end" }}>
-                <div style={{ flex: "1 1 320px" }}><Field label="Thư mục dự án trên máy"><input value={path} onChange={(e) => setPath(e.target.value)} placeholder={roots.data.paths[0] + "\\TenGame"} /></Field></div>
+                <div style={{ flex: "1 1 320px" }}><Field label="Thư mục dự án trên máy"><input value={path} onChange={(e) => setPath(e.target.value)} placeholder={(roots.data.paths[0] ?? "C:\\Games") + "\\TenGame"} /></Field></div>
                 <button className="btn ghost" type="button" onClick={() => setBrowsePath(browsePath === null ? "" : null)}>{browsePath === null ? "Duyệt thư mục…" : "Ẩn danh sách"}</button>
               </div>
               {browsePath !== null && (
@@ -89,8 +91,9 @@ export function SourcePanel({ project, role, onDone }: { project: any; role: str
               )}
               <p className="muted">Hệ thống SAO CHÉP mã nguồn vào workspace của dự án (không sửa, không xóa gì trong thư mục gốc của bạn). Bỏ qua .git, node_modules, tệp bí mật (.env, khóa riêng) và symlink.</p>
               <button className="btn" disabled={busy || !path} onClick={async () => {
-                if (await run(async () => setRes(await api<Result>(`/projects/${project.id}/import/folder`, { method: "POST", body: { path } })), "Đã nhập từ thư mục.")) onDone();
-              }}>{busy ? "Đang sao chép…" : "Nhập từ thư mục này"}</button>
+                if (await run(async () => setRes(await api<Result>(`/projects/${project.id}/import/folder`, { method: "POST", body: { path, grant: outside } })), "Đã nhập từ thư mục.")) { onDone(); roots.reload(); }
+              }}>{busy ? "Đang sao chép…" : outside ? "Cấp quyền truy cập thư mục này & nhập" : "Nhập từ thư mục này"}</button>
+              {outside && <p className="muted">Thư mục này chưa nằm trong vùng được phép. Bấm nút trên là bạn (chủ studio) cho phép hệ thống truy cập thư mục đó; có thể gỡ lại trong Cài đặt.</p>}
             </>
           )}
         </div>
