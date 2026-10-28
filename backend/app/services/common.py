@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import re
+import unicodedata
+
 from sqlalchemy.orm import Session
 
 from ..models import AuditLog, SystemSetting
@@ -38,3 +41,9 @@ def set_setting(s: Session, key: str, value: str) -> None:
 
 def get_bool(s: Session, key: str) -> bool:
     return get_setting(s, key) == "1"
+
+
+def slugify(s: str, default: str = "item", max_len: int = 50) -> str:
+    """Bỏ dấu tiếng Việt, chỉ giữ a-z0-9 và dấu gạch ngang."""
+    s = unicodedata.normalize("NFKD", s.replace("đ", "d").replace("Đ", "D")).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-")[:max_len] or default

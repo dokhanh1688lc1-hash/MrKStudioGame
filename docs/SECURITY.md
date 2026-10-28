@@ -12,5 +12,12 @@
 
 Giới hạn đã biết: token không thu hồi được trước hạn; chưa có HTTPS (chạy localhost; đặt sau reverse proxy nếu mở ra mạng); chưa có 2FA; kết quả AI hiển thị dạng text thuần.
 
+## Tải mã nguồn lên
+- Chống zip-slip (từ chối đường dẫn tuyệt đối, `..`, ổ đĩa), bỏ symlink, kiểm tra kích thước khai báo.
+- Giới hạn: 100 MB mỗi lần tải, 5000 tệp, 300 MB sau giải nén. Lỗi giữa chừng → xóa sạch thư mục nhập dở.
+- Không nhập tệp bí mật (`.env*`, `*.pem`, `*.key`, `id_rsa`…); bỏ `.git`, `node_modules`, `.venv`, `.godot`.
+- Mọi đường dẫn đọc/ghi được kiểm tra nằm trong workspace của đúng dự án, workspace phải nằm trong `games/`.
+- Nội dung gửi cho AI và hiển thị trên giao diện được che chuỗi giống khóa API/khóa riêng/dòng `key|token|secret|password = …`. Việc che là best-effort, **không** bảo đảm tuyệt đối: đừng tải lên mã chứa bí mật nếu không cần; dùng cờ “nhạy cảm” để chỉ gửi provider được cấp quyền.
+
 ## Backup / khôi phục
 Dừng ứng dụng, sao chép `data/mrk_studio.db` (và `data/secret.key`) ra nơi an toàn. Khôi phục: dừng ứng dụng, chép đè lại hai file. Backup tự động: chưa triển khai.

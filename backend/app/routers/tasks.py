@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..deps import Principal, current_user, get_db, require
 from ..models import Agent, Department, Project, Task, TaskDependency
 from ..schemas import TaskDetail, TaskIn, TaskOut
-from ..services.common import EngineError, audit
+from ..services.common import EngineError, audit, slugify
 from ..services.pipeline import TEMPLATE, create_pipeline, pipeline_tasks
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -168,3 +168,28 @@ def run_ready(pid: int, request: Request, wait: bool = False, user: Principal = 
         if not progressed:
             break
     return report
+
+
+@router.post("/{tid}/save-to-workspace")
+def save_result(tid: int, request: Request, user: Principal = Depends(require("manager")), s: Session = Depends(get_db)):
+    """Lưu kết quả nhiệm vụ đã hoàn thành thành tệp .md trong workspace dự án (ai-output/)."""
+    import re
+    from pathlib import Path
+    t = s.get(Task, tid)
+    if not t:
+        raise HTTPException(404, "Không tìm thấy nhiệm vụ.")
+    if t.status != "Completed" or not t.result:
+        raise HTTPException(409, "Chỉ lưu được kết quả của nhiệm vụ đã hoàn thành.")
+    p = s.get(Project, t.project_id)
+    games = request.app.state.settings.games_dir.resolve()
+    ws = Path(p.workspace_path).resolve() if p.workspace_path else None
+    if not ws or games not in ws.parents:
+        raise HTTPException(409, "Dự án chưa có workspace hợp lệ.")
+    out = ws / "ai-output"
+    out.mkdir(parents=True, exist_ok=True)
+    slug = slugify(t.title, "task")
+    f = out / f"{t.id}-{slug}.md"
+    f.write_text(f"<!-- nguồn: {t.result_source}; nhiệm vụ #{t.id} -->\n\n{t.result}", encoding="utf-8")
+    audit(s, user.username, "task_result_saved", "task", t.id, f.name)
+    s.commit()
+    return {"path": f"ai-output/{f.name}"}

@@ -47,3 +47,15 @@ export function useLoad<T>(path: string | null, deps: unknown[] = []) {
 
 export const utc = (s?: string | null) => (s ? new Date(s).toLocaleString("vi-VN") : "—");
 export const usd = (v: number | null | undefined) => (v == null ? "chưa biết" : `$${v.toFixed(4)}`);
+
+export async function upload(path: string, files: File[]): Promise<any> {
+  const fd = new FormData();
+  files.forEach((f) => fd.append("files", f));
+  const res = await fetch("/api" + path, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` }, body: fd });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const d = data?.detail;
+    throw new ApiError(res.status, typeof d === "string" ? d : Array.isArray(d) ? d.map((x: any) => x.msg).join("; ") : `Lỗi ${res.status}`);
+  }
+  return data;
+}

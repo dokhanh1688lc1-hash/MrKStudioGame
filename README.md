@@ -36,6 +36,10 @@ Chế độ nội bộ quản lý dự án/nhiệm vụ/ngân sách/phê duyệt
 3. **Ngân sách & Chi phí** → đặt hạn mức; **Approval Center** → duyệt nhiệm vụ cần phê duyệt; **Activity Logs** → audit.
 4. **Cài đặt & Bảo mật** → Emergency Stop, người dùng, chính sách.
 
+## Dự án đang làm dở (sửa / nâng cấp)
+Trang **Dự án** → nút **Sửa** để đổi thông tin; nút **Mã nguồn** để tải lên dự án có sẵn (.zip tải từ Claude hoặc từng tệp),
+xem tệp, rồi tạo nhiệm vụ **Phân tích & nâng cấp** cho AI. AI trả báo cáo/đoạn mã đề xuất; hệ thống không tự sửa tệp của bạn.
+
 ## Cấu trúc
 ```
 backend/   FastAPI + SQLAlchemy (app/, tests/)

@@ -23,6 +23,16 @@
 | Trang riêng cho từng phòng ban (Market Research, Art, Audio…) | Not Implemented |
 | Sinh ảnh/âm thanh thật, build Godot, Telegram | Not Implemented |
 
+### Dự án cũ: sửa, tải lên, nâng cấp
+| Hạng mục | Trạng thái |
+|---|---|
+| Sửa thông tin dự án (tên, thể loại, nền tảng, thị trường, mô tả, trạng thái) | Implemented |
+| Tải mã nguồn lên workspace (.zip hoặc từng tệp), mỗi lần một thư mục `imports/` | Implemented |
+| Xem cây tệp và nội dung tệp văn bản (che chuỗi giống khóa) | Implemented |
+| Nhiệm vụ “Phân tích & nâng cấp” bằng Game Development AI + lưu kết quả `.md` vào workspace | Implemented |
+| AI tự sửa trực tiếp tệp mã nguồn / áp dụng patch / chạy build | Not Implemented (cố ý: Phase 1–2 AI chỉ trả văn bản; bạn áp dụng thủ công) |
+| Tải workspace xuống dạng zip, xóa tệp trong workspace | Not Implemented |
+
 Lưu ý: nút “Chạy các bước sẵn sàng” chỉ chạy **một lượt** mỗi lần bấm (kiểm soát chi phí); bấm lại để chạy lượt kế tiếp.
 
 ## Các bước tiếp theo (ưu tiên)
