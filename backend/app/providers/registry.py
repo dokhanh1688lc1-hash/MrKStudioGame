@@ -2,20 +2,21 @@ from __future__ import annotations
 
 from ..config import Settings
 from .base import Provider
-from .http_providers import AnthropicAdapter, OpenAIAdapter
 from .cli_providers import ClaudeCli, CodexCli
 from .internal import InternalProvider
 
+# Họ nhà cung cấp (giá trị lưu ở phòng ban/nhiệm vụ cũ) → provider chạy trên máy
+FAMILY_TO_PROVIDER = {"openai": "codex_cli", "anthropic": "claude_cli"}
+
 
 class ProviderRegistry:
-    def __init__(self, settings: Settings, transports: dict | None = None):
-        t = transports or {}
+    """Chỉ dùng chương trình đã cài và đăng nhập sẵn trên máy (không dùng API key)."""
+
+    def __init__(self, settings: Settings):
+        scratch = settings.data_dir / "cli-scratch"
         self._p: dict[str, Provider] = {
-            "openai": OpenAIAdapter(settings.openai_api_key, settings.openai_base_url, t.get("openai")),
-            "anthropic": AnthropicAdapter(settings.anthropic_api_key, settings.anthropic_base_url,
-                                          t.get("anthropic")),
-            "claude_cli": ClaudeCli(settings.data_dir / "cli-scratch"),
-            "codex_cli": CodexCli(settings.data_dir / "cli-scratch"),
+            "claude_cli": ClaudeCli(scratch),
+            "codex_cli": CodexCli(scratch),
             "internal": InternalProvider(),
         }
 

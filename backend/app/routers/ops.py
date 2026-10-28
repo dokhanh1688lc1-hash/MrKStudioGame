@@ -22,16 +22,16 @@ router = APIRouter(prefix="/api", tags=["ops"])
 # ---------- providers ----------
 def _prov_out(request: Request, c: ProviderConfig) -> ProviderOut:
     p = request.app.state.registry.get(c.name)
-    return ProviderOut(name=c.name, kind="cli" if c.name.endswith("_cli") else ("internal" if c.name == "internal" else "api"), enabled=c.enabled, configured=p.configured(), masked_key=p.masked_key(),
-                       default_model=c.default_model, price_in_per_mtok=c.price_in_per_mtok,
-                       price_out_per_mtok=c.price_out_per_mtok, allow_sensitive=c.allow_sensitive,
-                       last_check_status=c.last_check_status, last_check_message=c.last_check_message,
-                       last_check_at=c.last_check_at)
+    return ProviderOut(name=c.name, kind="internal" if c.name == "internal" else "cli", enabled=c.enabled,
+                       configured=p.configured(), program_path=p.masked_key(), default_model=c.default_model,
+                       allow_sensitive=c.allow_sensitive, last_check_status=c.last_check_status,
+                       last_check_message=c.last_check_message, last_check_at=c.last_check_at)
 
 
 @router.get("/providers", response_model=list[ProviderOut])
 def providers(request: Request, _: Principal = Depends(current_user), s: Session = Depends(get_db)):
-    return [_prov_out(request, c) for c in s.scalars(select(ProviderConfig).order_by(ProviderConfig.id))]
+    return [_prov_out(request, c) for c in s.scalars(select(ProviderConfig).order_by(ProviderConfig.id))
+            if c.name in request.app.state.registry.names()]
 
 
 @router.patch("/providers/{name}", response_model=ProviderOut)
@@ -39,6 +39,8 @@ def patch_provider(name: str, body: ProviderPatch, request: Request, user: Princ
                    s: Session = Depends(get_db)):
     c = s.scalar(select(ProviderConfig).where(ProviderConfig.name == name))
     if not c:
+        raise HTTPException(404, "Không tìm thấy provider.")
+    if name not in request.app.state.registry.names():
         raise HTTPException(404, "Không tìm thấy provider.")
     if name == "internal" and body.model_dump(exclude_unset=True).keys() - {"enabled"}:
         raise HTTPException(422, "Chế độ nội bộ chỉ có thể bật/tắt.")
@@ -172,7 +174,7 @@ def audit_logs(action: str = "", limit: int = Query(50, ge=1, le=200), offset: i
 
 
 def _system_state(s: Session) -> dict:
-    return {"emergency_stop": get_bool(s, "emergency_stop"), "fallback_enabled": get_bool(s, "fallback_enabled"), "prefer_cli": get_bool(s, "prefer_cli"),
+    return {"emergency_stop": get_bool(s, "emergency_stop"), "fallback_enabled": get_bool(s, "fallback_enabled"),
             "approval_cost_threshold_usd": float(get_setting(s, "approval_cost_threshold_usd"))}
 
 
@@ -194,8 +196,6 @@ def patch_settings(body: SettingsPatch, user: Principal = Depends(require("owner
     d = body.model_dump(exclude_unset=True)
     if "fallback_enabled" in d and d["fallback_enabled"] is not None:
         set_setting(s, "fallback_enabled", "1" if d["fallback_enabled"] else "0")
-    if "prefer_cli" in d and d["prefer_cli"] is not None:
-        set_setting(s, "prefer_cli", "1" if d["prefer_cli"] else "0")
     if "approval_cost_threshold_usd" in d and d["approval_cost_threshold_usd"] is not None:
         set_setting(s, "approval_cost_threshold_usd", str(d["approval_cost_threshold_usd"]))
     audit(s, user.username, "settings_changed", "system", "", ", ".join(d))
@@ -208,13 +208,11 @@ def dashboard(request: Request, _: Principal = Depends(current_user), s: Session
     by_status = dict(s.execute(select(Task.status, func.count()).group_by(Task.status)).all())
     projects = dict(s.execute(select(Project.status, func.count()).group_by(Project.status)).all())
     provs = [_prov_out(request, c) for c in s.scalars(select(ProviderConfig))]
-    unknown = s.scalar(select(func.count()).select_from(UsageRecord).where(UsageRecord.cost_usd.is_(None)))
     return {
         "projects_total": sum(projects.values()), "projects_by_status": projects,
         "tasks_total": sum(by_status.values()), "tasks_by_status": by_status,
         "pending_approvals": s.scalar(select(func.count()).select_from(Approval).where(Approval.status == "pending")),
         "spend_today_usd": spent(s, "studio", "", "daily"), "spend_month_usd": spent(s, "studio", "", "monthly"),
-        "usage_records_without_price": unknown,
         "providers": [{"name": p.name, "configured": p.configured, "enabled": p.enabled,
                        "last_check_status": p.last_check_status} for p in provs],
         "system": _system_state(s),

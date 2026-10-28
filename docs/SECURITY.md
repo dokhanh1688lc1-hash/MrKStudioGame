@@ -1,6 +1,6 @@
 # Bảo mật
 
-- API key **chỉ** đọc từ biến môi trường/`.env` của backend; không lưu DB, không gửi frontend; UI chỉ hiện dạng che (`sk-…ab`). Khóa giả `fake` trong `.env.example` bị bỏ qua.
+- **Không có API key** trong hệ thống: AI chạy qua Claude Code/Codex đã đăng nhập trên máy bạn (thông tin đăng nhập do các chương trình đó tự quản lý, ứng dụng này không đọc hay lưu).
 - `.env`, `data/`, `*.db`, `*.key` nằm trong `.gitignore`.
 - Mật khẩu băm PBKDF2-SHA256 (200k vòng, salt riêng). Token ký HMAC-SHA256, hết hạn theo `TOKEN_TTL_HOURS`. Secret ký lấy từ `SECRET_KEY` hoặc tự sinh vào `data/secret.key`.
 - Giới hạn đăng nhập: 5 lần sai / 5 phút / tên đăng nhập (trong bộ nhớ; reset khi restart).

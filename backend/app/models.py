@@ -71,14 +71,12 @@ class Agent(Base):
 
 
 class ProviderConfig(Base):
-    """Cấu hình nhà cung cấp. KHÔNG chứa API key (khóa chỉ nằm trong biến môi trường)."""
+    """Cấu hình provider chạy trên máy (Claude Code / Codex / nội bộ). Không có API key."""
     __tablename__ = "provider_configs"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(20), unique=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     default_model: Mapped[str] = mapped_column(String(120), default="")
-    price_in_per_mtok: Mapped[float | None] = mapped_column(Float, nullable=True)
-    price_out_per_mtok: Mapped[float | None] = mapped_column(Float, nullable=True)
     allow_sensitive: Mapped[bool] = mapped_column(Boolean, default=False)
     last_check_status: Mapped[str] = mapped_column(String(20), default="never")
     last_check_message: Mapped[str] = mapped_column(Text, default="")

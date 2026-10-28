@@ -22,9 +22,6 @@ export function Dashboard({ go }: { go: (p: string) => void }) {
               <div className="stat"><b>${d.data.spend_today_usd.toFixed(4)}</b><span>Chi phí hôm nay (đã biết giá)</span></div>
               <div className="stat"><b>${d.data.spend_month_usd.toFixed(4)}</b><span>Chi phí tháng này (đã biết giá)</span></div>
             </div>
-            {d.data.usage_records_without_price > 0 && (
-              <div className="msg">⚠ {d.data.usage_records_without_price} lần gọi chưa tính được chi phí vì chưa cấu hình giá provider.</div>
-            )}
             <div className="card">
               <b>Nhiệm vụ theo trạng thái</b>
               {Object.keys(d.data.tasks_by_status).length === 0 ? <Empty text="Chưa có nhiệm vụ." /> : (
@@ -219,7 +216,7 @@ export function Tasks({ role }: Role) {
             <Field label="Phòng ban *"><select value={f.department_key} onChange={(e) => setF({ ...f, department_key: e.target.value })} required>
               <option value="">— chọn —</option>{depts.data?.map((d) => <option key={d.key} value={d.key}>{d.name} (ưu tiên {d.preferred_provider})</option>)}</select></Field>
             <Field label="Provider (để trống = theo routing)"><select value={f.provider} onChange={(e) => setF({ ...f, provider: e.target.value })}>
-              <option value="">Tự động theo routing</option><option>openai</option><option>anthropic</option><option>claude_cli</option><option>codex_cli</option><option>internal</option></select></Field>
+              <option value="">Tự động theo routing</option><option value="claude_cli">Claude Code (trên máy)</option><option value="codex_cli">Codex / ChatGPT (trên máy)</option><option value="internal">Nội bộ (không gọi AI)</option></select></Field>
           </div>
           <Field label="Tiêu đề *"><input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required /></Field>
           <Field label="Mục tiêu *"><textarea value={f.objective} onChange={(e) => setF({ ...f, objective: e.target.value })} required /></Field>
@@ -307,7 +304,7 @@ export function Agents({ role }: Role) {
               <tr key={d.key}><td>{d.name}</td><td className="muted">{d.description}</td>
                 <td>{role === "owner" ? (
                   <select value={d.preferred_provider} onChange={(e) => run(() => api(`/departments/${d.key}`, { method: "PATCH", body: { preferred_provider: e.target.value } }), "Đã đổi provider ưu tiên.").then(deps.reload)}>
-                    <option>openai</option><option>anthropic</option></select>) : d.preferred_provider}</td>
+                    <option value="openai">ChatGPT (Codex)</option><option value="anthropic">Claude (Claude Code)</option></select>) : (d.preferred_provider === "openai" ? "ChatGPT (Codex)" : "Claude (Claude Code)")}</td>
                 <td>{a && (role === "owner" ? (
                   <label style={{ margin: 0 }}><input type="checkbox" style={{ width: "auto" }} checked={a.enabled} onChange={(e) => run(() => api(`/agents/${a.id}`, { method: "PATCH", body: { enabled: e.target.checked } }), "Đã cập nhật agent.").then(ag.reload)} /> {a.enabled ? "Bật" : "Tắt"}</label>
                 ) : (a.enabled ? "Bật" : "Tắt"))}</td></tr>);
@@ -328,7 +325,7 @@ export function Providers({ role }: Role) {
   return (
     <>
       <h2>AI Provider & Routing</h2>{banner}
-      <div className="msg">API key chỉ nằm trong biến môi trường của backend (file <code>.env</code>), không bao giờ hiển thị đầy đủ hay lưu vào database. Model ID và giá do bạn tự cấu hình bên dưới; hệ thống không tự bịa giá.</div>
+      <div className="msg">Hệ thống chỉ dùng <b>Claude Code</b> và <b>Codex (ChatGPT)</b> đã cài và đăng nhập sẵn trên máy bạn, không dùng API key. Cài và đăng nhập trong cửa sổ lệnh (xem README), bấm “Kiểm tra kết nối”, rồi bật. Chưa bật chương trình nào thì nhiệm vụ chạy ở chế độ nội bộ (không gọi AI).</div>
       <Async loading={ps.loading} error={ps.error}>
         {ps.data?.map((p) => {
           const e = edit[p.name] || {};
@@ -337,13 +334,11 @@ export function Providers({ role }: Role) {
           return (
             <div className="card" key={p.name}>
               <div className="row tight"><b style={{ fontSize: 17 }}>{p.name}</b>
-                <span>{p.kind === "cli" ? (p.configured ? `Chương trình: ${p.masked_key}` : "Chưa tìm thấy chương trình trên máy") : p.configured ? `Khóa: ${p.masked_key || "(nội bộ)"}` : "Chưa có API key"}</span>
+                <span>{p.kind === "cli" ? (p.configured ? `Chương trình: ${p.program_path}` : "Chưa tìm thấy chương trình trên máy") : "Luôn sẵn sàng"}</span>
                 <Badge v={p.last_check_status} /><span className="muted">{p.last_check_message} {p.last_check_at && `(${utc(p.last_check_at)})`}</span></div>
-              {p.name !== "internal" && role === "owner" && (
+              {p.kind === "cli" && role === "owner" && (
                 <div className="row">
-                  <Field label={p.kind === "cli" ? "Model (để trống = mặc định của chương trình)" : "Model ID mặc định"}><input value={val("default_model")} onChange={(ev) => set("default_model", ev.target.value)} /></Field>
-                  {p.kind === "api" && <><Field label="Giá input (USD / 1 triệu token)"><input type="number" step="any" min="0" value={val("price_in_per_mtok")} onChange={(ev) => set("price_in_per_mtok", ev.target.value === "" ? null : Number(ev.target.value))} /></Field>
-                  <Field label="Giá output (USD / 1 triệu token)"><input type="number" step="any" min="0" value={val("price_out_per_mtok")} onChange={(ev) => set("price_out_per_mtok", ev.target.value === "" ? null : Number(ev.target.value))} /></Field></>}
+                  <Field label="Model (để trống = mặc định của chương trình)"><input value={val("default_model")} onChange={(ev) => set("default_model", ev.target.value)} /></Field>
                 </div>
               )}
               {p.kind === "cli" && <p className="muted">Dùng tài khoản {p.name === "claude_cli" ? "Claude" : "ChatGPT"} đã đăng nhập sẵn trên máy qua chương trình dòng lệnh (không cần API key). Tính vào hạn mức gói thuê bao của bạn, không tính tiền theo token, nên hệ thống không theo dõi chi phí USD cho provider này. Chạy chậm hơn API; chỉ trả về văn bản, không sửa tệp. Mặc định TẮT: bấm “Kiểm tra kết nối” rồi bật.</p>}
@@ -405,7 +400,7 @@ export function Budgets({ role }: Role) {
   return (
     <>
       <h2>Ngân sách & Chi phí</h2>{banner}
-      <div className="msg">Chi phí chỉ được tính khi bạn đã cấu hình giá provider. Lần gọi chưa có giá hiển thị “chưa biết” — không bịa số. Khi có ngân sách mà provider ngoài chưa có giá, hệ thống chặn gọi API.</div>
+      <div className="msg">Claude Code và Codex chạy theo gói thuê bao nên hệ thống ghi chi phí 0 USD cho chúng; ngân sách USD chỉ có tác dụng với chi phí do chính bạn ghi nhận. Hạn mức của gói thuê bao xem ở nhà cung cấp.</div>
       {role === "owner" && (
         <form className="card" onSubmit={async (e) => {
           e.preventDefault();
@@ -477,7 +472,6 @@ export function Settings({ role }: Role) {
   const users = useLoad<any[]>(role === "owner" ? "/users" : null);
   const { run, busy, banner } = useAction();
   const [nu, setNu] = useState({ username: "", password: "", role: "viewer" });
-  const [thr, setThr] = useState("");
   const backups = useLoad<any[]>(role === "owner" ? "/system/backups" : null);
   return (
     <>
@@ -496,12 +490,6 @@ export function Settings({ role }: Role) {
             <b>Chính sách</b>
             <p><label style={{ margin: 0 }}><input type="checkbox" style={{ width: "auto" }} disabled={role !== "owner"} checked={st.data.fallback_enabled}
               onChange={(e) => run(() => api("/system/settings", { method: "PATCH", body: { fallback_enabled: e.target.checked } }), "Đã cập nhật.").then(st.reload)} /> Cho phép tự chuyển sang provider khác khi provider chính lỗi</label></p>
-            <p><label style={{ margin: 0 }}><input type="checkbox" style={{ width: "auto" }} disabled={role !== "owner"} checked={st.data.prefer_cli}
-              onChange={(e) => run(() => api("/system/settings", { method: "PATCH", body: { prefer_cli: e.target.checked } }), "Đã cập nhật.").then(st.reload)} /> Ưu tiên dùng Claude Code / Codex đã đăng nhập trên máy (gói thuê bao) trước API khi cùng nhà cung cấp</label></p>
-            <div className="row tight">
-              <Field label={`Ngưỡng chi phí ước tính cần phê duyệt (USD) — hiện: ${st.data.approval_cost_threshold_usd}`}><input type="number" step="any" min="0" value={thr} disabled={role !== "owner"} onChange={(e) => setThr(e.target.value)} /></Field>
-              {role === "owner" && <button className="btn" disabled={busy || thr === ""} onClick={() => run(() => api("/system/settings", { method: "PATCH", body: { approval_cost_threshold_usd: Number(thr) } }), "Đã lưu ngưỡng.").then(() => { setThr(""); st.reload(); })}>Lưu</button>}
-            </div>
           </div>
         )}
       </Async>

@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 ProjectStatus = Literal["Research", "Concept", "Pre-production", "Prototype", "Production", "QA",
                         "Release Preparation", "Live Operations", "Paused", "Archived"]
-ProviderName = Literal["openai", "anthropic", "claude_cli", "codex_cli", "internal"]
+ProviderName = Literal["claude_cli", "codex_cli", "internal"]
 
 
 class ORM(BaseModel):
@@ -159,13 +159,11 @@ class TaskDetail(TaskOut):
 
 class ProviderOut(BaseModel):
     name: str
-    kind: str = "api"
+    kind: str = "cli"
     enabled: bool
     configured: bool
-    masked_key: str
+    program_path: str
     default_model: str
-    price_in_per_mtok: float | None
-    price_out_per_mtok: float | None
     allow_sensitive: bool
     last_check_status: str
     last_check_message: str
@@ -175,8 +173,6 @@ class ProviderOut(BaseModel):
 class ProviderPatch(BaseModel):
     enabled: bool | None = None
     default_model: str | None = None
-    price_in_per_mtok: float | None = Field(default=None, ge=0)
-    price_out_per_mtok: float | None = Field(default=None, ge=0)
     allow_sensitive: bool | None = None
 
 
@@ -249,5 +245,4 @@ class StopIn(BaseModel):
 
 class SettingsPatch(BaseModel):
     fallback_enabled: bool | None = None
-    prefer_cli: bool | None = None
     approval_cost_threshold_usd: float | None = Field(default=None, ge=0)

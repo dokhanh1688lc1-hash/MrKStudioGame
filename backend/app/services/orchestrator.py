@@ -15,7 +15,7 @@ from ..db import utcnow
 from ..models import (Agent, Approval, Department, ProviderConfig, Task, TaskAttempt,
                       TaskDependency, UsageRecord)
 from ..providers.base import ProviderError
-from ..providers.registry import ProviderRegistry
+from ..providers.registry import FAMILY_TO_PROVIDER, ProviderRegistry
 from .budget import check_budget, compute_cost, estimate_tokens, spent
 from .common import EngineError, audit, get_bool, get_setting, set_setting
 
@@ -49,18 +49,16 @@ def build_prompt(t: Task, upstream: list[tuple[str, str]] | None = None) -> str:
 
 def plan_route(s: Session, registry: ProviderRegistry, *, department_key: str, provider: str | None,
                model: str | None, sensitive: bool) -> tuple[list[tuple[str, str]], str]:
-    """Trả về (chuỗi [(provider, model)], lý do định tuyến)."""
-    cfgs = {c.name: c for c in s.scalars(select(ProviderConfig))}
+    """Trả về (chuỗi [(provider, model)], lý do định tuyến). Chỉ dùng chương trình trên máy hoặc chế độ nội bộ."""
+    cfgs = {c.name: c for c in s.scalars(select(ProviderConfig)) if c.name in registry.names()}
+    provider = FAMILY_TO_PROVIDER.get(provider or "", provider)  # nhiệm vụ cũ lưu 'openai'/'anthropic'
 
     def usable(name: str) -> tuple[bool, str]:
         c, p = cfgs.get(name), registry.get(name)
         if c is None or not c.enabled:
             return False, f"provider '{name}' đang tắt"
-        sub_cli = getattr(p, "subscription", False)
         if not p.configured():
-            return False, f"provider '{name}' " + ("chưa cài/không tìm thấy chương trình" if sub_cli else "chưa có API key")
-        if not sub_cli and not (model or c.default_model):
-            return False, f"provider '{name}' chưa cấu hình model"
+            return False, f"provider '{name}' chưa cài/không tìm thấy chương trình trên máy"
         if sensitive and not c.allow_sensitive:
             return False, f"provider '{name}' chưa được cấp quyền nhận dữ liệu nhạy cảm"
         return True, ""
@@ -81,18 +79,14 @@ def plan_route(s: Session, registry: ProviderRegistry, *, department_key: str, p
     dept = s.scalar(select(Department).where(Department.key == department_key))
     pref = dept.preferred_provider if dept else "openai"
     other = "anthropic" if pref == "openai" else "openai"
-    fam = {"openai": ["openai", "codex_cli"], "anthropic": ["anthropic", "claude_cli"]}
-    prefer_cli = get_bool(s, "prefer_cli")
-    order = []
-    for f in (pref, other):
-        order += fam[f][::-1] if prefer_cli else fam[f]
+    order = [FAMILY_TO_PROVIDER[pref], FAMILY_TO_PROVIDER[other]]
     good = [n for n in order if n in cfgs and usable(n)[0]]
     if not good:
-        return [("internal", "internal")], "không có provider AI khả dụng → chế độ nội bộ (không gọi AI)"
-    chain = [(n, model_of(n) or cfgs[n].default_model) for n in good]
+        return [("internal", "internal")], "không có chương trình AI nào khả dụng trên máy → chế độ nội bộ (không gọi AI)"
+    chain = [(n, model_of(n)) for n in good]
     if not get_bool(s, "fallback_enabled"):
         chain = chain[:1]
-    reason = f"phòng ban ưu tiên {pref}" + ("" if good[0] in fam[pref] else f"; {pref} không khả dụng nên dùng {good[0]}")
+    reason = f"phòng ban ưu tiên {FAMILY_TO_PROVIDER[pref]}" + ("" if good[0] == order[0] else f"; {order[0]} không khả dụng nên dùng {good[0]}")
     return chain, reason
 
 

@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from .conftest import FakeAI, make_client, mk_project, mk_task
+from .conftest import make_client, mk_project, mk_task
 
 FAKE_CLAUDE = r'''#!/usr/bin/env bash
 LOG="$FAKE_LOG"
@@ -59,7 +59,7 @@ def enable(c, *names):
 
 
 def test_cli_providers_disabled_by_default_and_listed(tmp_path, clis):
-    c = make_client(tmp_path, FakeAI(), keys=False)
+    c = make_client(tmp_path, enable=False)
     ps = {p["name"]: p for p in c.get("/api/providers").json()}
     assert ps["claude_cli"]["kind"] == "cli" and ps["claude_cli"]["configured"] and not ps["claude_cli"]["enabled"]
     r = c.get("/api/routing/preview", params={"department": "game_dev"}).json()
@@ -67,7 +67,7 @@ def test_cli_providers_disabled_by_default_and_listed(tmp_path, clis):
 
 
 def test_check_reports_login_state(tmp_path, clis, monkeypatch):
-    c = make_client(tmp_path, FakeAI(), keys=False)
+    c = make_client(tmp_path, enable=False)
     r = c.post("/api/providers/claude_cli/check").json()
     assert r["last_check_status"] == "ok" and "đã đăng nhập" in r["last_check_message"]
     assert c.post("/api/providers/codex_cli/check").json()["last_check_status"] == "ok"
@@ -80,26 +80,14 @@ def test_check_reports_login_state(tmp_path, clis, monkeypatch):
 def test_check_when_program_missing(tmp_path, monkeypatch):
     monkeypatch.setenv("CLAUDE_CLI_PATH", str(tmp_path / "nope"))
     monkeypatch.setenv("PATH", str(tmp_path))
-    c = make_client(tmp_path, FakeAI(), keys=False)
+    c = make_client(tmp_path, enable=False)
     r = c.post("/api/providers/claude_cli/check").json()
     assert r["last_check_status"] == "failed" and "Chưa tìm thấy" in r["last_check_message"]
-    assert c.get("/api/providers").json()[2]["configured"] is False
-
-
-def test_routing_prefers_cli_by_family_then_api(tmp_path, clis):
-    c = make_client(tmp_path, FakeAI())  # có cả API key
-    enable(c, "claude_cli", "codex_cli")
-    pv = lambda d: c.get("/api/routing/preview", params={"department": d}).json()["chain"][0]["provider"]
-    assert pv("game_dev") == "claude_cli" and pv("market_research") == "codex_cli"
-    c.patch("/api/system/settings", json={"prefer_cli": False})
-    assert pv("game_dev") == "anthropic" and pv("market_research") == "openai"
-    c.patch("/api/system/settings", json={"prefer_cli": True})
-    c.patch("/api/providers/claude_cli", json={"enabled": False})
-    assert pv("game_dev") == "anthropic"  # CLI tắt → rơi về API cùng họ
+    assert not {x["name"]: x for x in c.get("/api/providers").json()}["claude_cli"]["configured"]
 
 
 def test_run_via_claude_cli_safely(tmp_path, clis):
-    c = make_client(tmp_path, FakeAI(), keys=False)
+    c = make_client(tmp_path, enable=False)
     enable(c, "claude_cli")
     p = mk_project(c)
     t = mk_task(c, p["id"], "game_dev", objective="NỘI-DUNG-BÍ-MẬT-123; rm -rf /")
@@ -119,7 +107,7 @@ def test_run_via_claude_cli_safely(tmp_path, clis):
 
 
 def test_run_via_codex_cli(tmp_path, clis):
-    c = make_client(tmp_path, FakeAI(), keys=False)
+    c = make_client(tmp_path, enable=False)
     enable(c, "codex_cli")
     p = mk_project(c)
     t = mk_task(c, p["id"], "market_research")
@@ -131,7 +119,7 @@ def test_run_via_codex_cli(tmp_path, clis):
 
 def test_cli_not_logged_in_fails_clearly_without_retry(tmp_path, clis, monkeypatch):
     monkeypatch.setenv("FAKE_MODE", "notlogged")
-    c = make_client(tmp_path, FakeAI(), keys=False)
+    c = make_client(tmp_path, enable=False)
     enable(c, "claude_cli")
     p = mk_project(c)
     t = mk_task(c, p["id"], "game_dev", max_retries=3)
@@ -139,21 +127,8 @@ def test_cli_not_logged_in_fails_clearly_without_retry(tmp_path, clis, monkeypat
     assert r["status"] == "Failed" and "chưa đăng nhập" in r["error"] and len(r["attempts"]) == 1
 
 
-def test_cli_failure_falls_back_to_api_only_when_enabled(tmp_path, clis, monkeypatch, fake=None):
-    fake = FakeAI()
-    monkeypatch.setenv("FAKE_MODE", "fail")
-    c = make_client(tmp_path, fake)
-    enable(c, "claude_cli")
-    p = mk_project(c)
-    t = mk_task(c, p["id"], "game_dev", max_retries=0)
-    assert c.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()["status"] == "Failed"
-    c.patch("/api/system/settings", json={"fallback_enabled": True})
-    r = c.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()
-    assert r["status"] == "Completed" and r["result_source"] == "anthropic"
-
-
 def test_sensitive_requires_permission_for_cli(tmp_path, clis):
-    c = make_client(tmp_path, FakeAI(), keys=False)
+    c = make_client(tmp_path, enable=False)
     enable(c, "claude_cli")
     r = c.get("/api/routing/preview", params={"department": "game_dev", "sensitive": True}).json()
     assert r["chain"][0]["provider"] == "internal"
@@ -163,7 +138,7 @@ def test_sensitive_requires_permission_for_cli(tmp_path, clis):
 
 
 def test_model_name_is_validated_not_passed_to_shell(tmp_path, clis):
-    c = make_client(tmp_path, FakeAI(), keys=False)
+    c = make_client(tmp_path, enable=False)
     enable(c, "claude_cli")
     p = mk_project(c)
     t = mk_task(c, p["id"], "game_dev", provider="claude_cli", model="x; touch /tmp/pwned")

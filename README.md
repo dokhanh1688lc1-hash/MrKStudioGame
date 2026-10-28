@@ -1,7 +1,7 @@
 # MrK Studio Game — AI Game Studio Platform
 
 Nền tảng điều hành studio game dùng AI: quản lý nhiều dự án, 14 phòng ban AI, điều phối hai nhà cung cấp
-(OpenAI cho tư duy/sáng tạo, Anthropic cho kỹ thuật), kiểm soát ngân sách, phê duyệt và audit.
+(ChatGPT/Codex cho tư duy/sáng tạo, Claude Code cho kỹ thuật), kiểm soát ngân sách, phê duyệt và audit.
 Đặc tả gốc: [`MASTER_PROMPT_V2.md`](MASTER_PROMPT_V2.md).
 
 **Trạng thái: Phase 1 (Core Platform) — xem [docs/ROADMAP.md](docs/ROADMAP.md) để biết chính xác phần nào đã/chưa làm.**
@@ -20,26 +20,14 @@ Lần chạy đầu tiên, console in **một lần** mật khẩu tài khoản 
 
 Linux/macOS: `cp .env.example .env`, `pip install -r backend/requirements.txt`, `cd frontend && npm i && npm run build`, rồi `./run.sh`.
 
-## Không có API key vẫn dùng được
-Chế độ nội bộ quản lý dự án/nhiệm vụ/ngân sách/phê duyệt mà không gọi AI. Nhiệm vụ chạy ở chế độ này chỉ dựng
-**khung công việc** và được gắn nhãn rõ “không phải kết quả AI”.
+## AI chạy thế nào (không dùng API key)
+Hệ thống chỉ dùng **Claude Code** và **Codex (ChatGPT)** đã cài và đăng nhập sẵn trên máy bạn; không có API key nào.
+1. Cài và đăng nhập: `npm install -g @anthropic-ai/claude-code` rồi chạy `claude`; `npm i -g @openai/codex` rồi `codex login` (Sign in with ChatGPT).
+2. Mở **AI Provider & Routing** → ở `claude_cli` / `codex_cli` bấm **Kiểm tra kết nối** → khi hiện `ok` thì tick **Bật** (mặc định tắt).
+3. Phòng ban nghiêng về Claude dùng Claude Code, phòng ban nghiêng về ChatGPT dùng Codex (đổi ở **Phòng ban & Agent**). Xem [docs/AI_ROUTING.md](docs/AI_ROUTING.md).
+4. Chưa bật chương trình nào → **chế độ nội bộ**: chỉ dựng khung công việc, ghi rõ “không phải kết quả AI”.
 
-## Dùng Claude / ChatGPT đã cài sẵn trên máy (không cần API key)
-1. Cài và đăng nhập: Claude Code (lệnh `claude`) và/hoặc Codex CLI (`npm i -g @openai/codex`, rồi `codex login` → Sign in with ChatGPT).
-2. Mở **AI Provider & Routing** → ở `claude_cli` / `codex_cli` bấm **Kiểm tra kết nối** → khi hiện `ok` thì tick **Bật**.
-3. Các phòng ban tự dùng chúng theo họ nhà cung cấp (xem [docs/AI_ROUTING.md](docs/AI_ROUTING.md)). Dùng gói thuê bao nên không tính USD theo token. Ứng dụng desktop ChatGPT/Claude không điều khiển được; chỉ hai công cụ dòng lệnh này.
-
-## Cấu hình OpenAI / Anthropic (API key)
-1. Mở `.env`, điền `OPENAI_API_KEY` và/hoặc `ANTHROPIC_API_KEY` (khóa thật, không commit `.env`). Khởi động lại.
-2. Vào **AI Provider & Routing**: nhập **Model ID** (bạn tự chọn, hệ thống không hardcode) và **giá** (USD/1 triệu token) rồi *Lưu cấu hình*.
-3. Bấm **Kiểm tra kết nối** (gọi `GET /v1/models`, không tốn token). Chỉ khi hiện `ok` mới coi là đã kết nối.
-4. Lưu ý: gói ChatGPT/Claude Code không bao gồm API; cần khóa API riêng có thanh toán.
-
-## Dùng thử
-1. **Dự án** → tạo dự án (tự tạo workspace riêng trong `games/`).
-2. **Task Center** → giao nhiệm vụ cho một phòng ban → **Chạy** → **Chi tiết** xem kết quả/lần chạy/chi phí.
-3. **Ngân sách & Chi phí** → đặt hạn mức; **Approval Center** → duyệt nhiệm vụ cần phê duyệt; **Activity Logs** → audit.
-4. **Cài đặt & Bảo mật** → Emergency Stop, người dùng, chính sách.
+Việc dùng tính vào hạn mức gói thuê bao của bạn, không tính USD theo token. Ứng dụng desktop ChatGPT/Claude không điều khiển được; chỉ hai công cụ dòng lệnh này.
 
 ## Dự án đang làm dở (sửa / nâng cấp)
 Trang **Dự án** → nút **Sửa** để đổi thông tin; nút **Mã nguồn** để tải lên dự án có sẵn (.zip tải từ Claude hoặc từng tệp),

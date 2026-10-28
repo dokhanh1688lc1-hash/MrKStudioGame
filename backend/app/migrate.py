@@ -23,7 +23,8 @@ def migrate(engine) -> str:
         cfg = make_config(conn)
         tables = set(inspect(conn).get_table_names())
         if "alembic_version" not in tables and "projects" in tables:
-            command.stamp(cfg, "head")
+            command.stamp(cfg, "0001")  # DB cũ tạo bằng create_all khớp baseline
+            command.upgrade(cfg, "head")
             return "stamped"
         command.upgrade(cfg, "head")
         return "upgraded"

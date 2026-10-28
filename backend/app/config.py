@@ -28,12 +28,6 @@ class Settings:
     admin_username: str = "owner"
     admin_password: str = ""
     token_ttl_hours: int = 12
-    openai_api_key: str = ""
-    anthropic_api_key: str = ""
-    openai_base_url: str = "https://api.openai.com"
-    anthropic_base_url: str = "https://api.anthropic.com"
-    openai_default_model: str = ""
-    anthropic_default_model: str = ""
     data_dir: Path = field(default_factory=lambda: ROOT / "data")
     frontend_dist: Path = field(default_factory=lambda: ROOT / "frontend" / "dist")
     games_dir: Path = field(default_factory=lambda: ROOT / "games")
@@ -48,12 +42,6 @@ class Settings:
             admin_username=e.get("ADMIN_USERNAME", "owner"),
             admin_password=e.get("ADMIN_PASSWORD", ""),
             token_ttl_hours=int(e.get("TOKEN_TTL_HOURS", "12")),
-            openai_api_key=_real_key(e.get("OPENAI_API_KEY", "")),
-            anthropic_api_key=_real_key(e.get("ANTHROPIC_API_KEY", "")),
-            openai_base_url=e.get("OPENAI_BASE_URL", "https://api.openai.com"),
-            anthropic_base_url=e.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com"),
-            openai_default_model=e.get("OPENAI_DEFAULT_MODEL", ""),
-            anthropic_default_model=e.get("ANTHROPIC_DEFAULT_MODEL", ""),
         )
 
     def ensure_secret(self) -> str:
@@ -81,14 +69,3 @@ def _abs_sqlite(url: str) -> str:
             return pre + path.as_posix()
     return url
 
-
-def _real_key(v: str) -> str:
-    """Bỏ qua giá trị giả lấy từ .env.example."""
-    v = v.strip()
-    return "" if (not v or "fake" in v.lower()) else v
-
-
-def mask_key(key: str) -> str:
-    if not key:
-        return ""
-    return key[:3] + "…" + key[-2:] if len(key) > 8 else "••••"

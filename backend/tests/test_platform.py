@@ -58,144 +58,150 @@ def test_seed_departments_and_agents(client):
 
 
 # ---------- provider & routing ----------
-def test_providers_masked_and_check(client, fake):
+def test_only_local_providers_exist_and_no_api_key_leak(client):
     ps = {p["name"]: p for p in client.get("/api/providers").json()}
-    assert ps["openai"]["configured"] and "sk-test-openai" not in str(ps)
-    r = client.post("/api/providers/openai/check").json()
+    assert set(ps) == {"claude_cli", "codex_cli", "internal"}
+    assert "price_in_per_mtok" not in str(ps) and "api_key" not in str(ps).lower()
+    assert ps["claude_cli"]["configured"] and ps["claude_cli"]["enabled"]
+
+
+def test_check_ok_and_failures(client, fake):
+    r = client.post("/api/providers/claude_cli/check").json()
     assert r["last_check_status"] == "ok"
-    fake.mode["anthropic"] = "unauth"
-    assert client.post("/api/providers/anthropic/check").json()["last_check_status"] == "failed"
+    fake.mode["codex_cli"] = "notlogged"
+    r = client.post("/api/providers/codex_cli/check").json()
+    assert r["last_check_status"] == "failed" and "chưa đăng nhập" in r["last_check_message"]
 
 
-def test_unconfigured_provider_reported(offline):
-    r = offline.post("/api/providers/openai/check").json()
-    assert r["last_check_status"] == "failed" and "chưa cấu hình" in r["last_check_message"].lower()
+def test_missing_programs_reported(offline):
+    r = offline.post("/api/providers/claude_cli/check").json()
+    assert r["last_check_status"] == "failed" and "Chưa tìm thấy" in r["last_check_message"]
+    assert not {p["name"]: p for p in offline.get("/api/providers").json()}["claude_cli"]["configured"]
 
 
-def test_routing_follows_department_and_fallback_to_internal(client, offline):
+def test_routing_follows_department_and_falls_back_to_internal(client, offline):
+    pv = lambda c, d, **k: c.get("/api/routing/preview", params={"department": d, **k}).json()["chain"]
+    assert pv(client, "game_dev")[0] == {"provider": "claude_cli", "model": ""}
+    assert pv(client, "market_research")[0]["provider"] == "codex_cli"
+    assert pv(offline, "game_dev") == [{"provider": "internal", "model": "internal"}]
+    client.patch("/api/providers/claude_cli", json={"enabled": False})
+    assert pv(client, "game_dev")[0]["provider"] == "codex_cli"  # claude tắt → họ còn lại
+
+
+def test_change_department_family(client):
+    client.patch("/api/departments/game_dev", json={"preferred_provider": "openai"})
     r = client.get("/api/routing/preview", params={"department": "game_dev"}).json()
-    assert r["chain"][0] == {"provider": "anthropic", "model": "an-model"}
-    r = client.get("/api/routing/preview", params={"department": "market_research"}).json()
-    assert r["chain"][0]["provider"] == "openai"
-    r = offline.get("/api/routing/preview", params={"department": "game_dev"}).json()
-    assert r["chain"] == [{"provider": "internal", "model": "internal"}]
+    assert r["chain"][0]["provider"] == "codex_cli"
 
 
 def test_sensitive_data_blocked_for_external(client):
     r = client.get("/api/routing/preview", params={"department": "game_dev", "sensitive": True}).json()
     assert r["chain"][0]["provider"] == "internal"
-    client.patch("/api/providers/anthropic", json={"allow_sensitive": True})
+    client.patch("/api/providers/claude_cli", json={"allow_sensitive": True})
     r = client.get("/api/routing/preview", params={"department": "game_dev", "sensitive": True}).json()
-    assert r["chain"][0]["provider"] == "anthropic"
+    assert r["chain"][0]["provider"] == "claude_cli"
+
+
+def test_legacy_api_provider_names_are_mapped(client):
+    """Nhiệm vụ cũ lưu provider 'anthropic'/'openai' vẫn chạy được, qua chương trình trên máy."""
+    from app.models import Task
+    p = mk_project(client)
+    t = mk_task(client, p["id"], "game_dev")
+    with client.app.state.sf() as s:
+        s.get(Task, t["id"]).provider = "anthropic"
+        s.commit()
+    r = client.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()
+    assert r["status"] == "Completed" and r["result_source"] == "claude_cli"
+    assert client.post("/api/tasks", json={"project_id": p["id"], "department_key": "qa", "title": "t", "objective": "o",
+                                           "provider": "openai"}).status_code == 422  # tạo mới không còn nhận 'openai'
 
 
 # ---------- chạy nhiệm vụ ----------
-def test_internal_mode_task_runs_without_keys_and_is_labeled(offline):
+def test_internal_mode_task_runs_without_programs_and_is_labeled(offline):
     p = mk_project(offline)
     t = mk_task(offline, p["id"], "market_research")
     r = offline.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()
     assert r["status"] == "Completed" and r["result_source"] == "internal"
-    assert "KHÔNG phải kết quả do AI" in r["result"]
-    assert r["actual_cost"] == 0.0
+    assert "KHÔNG phải kết quả do AI" in r["result"] and r["actual_cost"] == 0.0
 
 
-def test_real_provider_call_cost_and_usage(client, fake):
-    client.patch("/api/providers/anthropic", json={"price_in_per_mtok": 3.0, "price_out_per_mtok": 15.0})
+def test_real_provider_call_usage_and_zero_cost(client, fake):
     p = mk_project(client)
     t = mk_task(client, p["id"], "game_dev")
     r = client.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()
-    assert r["status"] == "Completed" and r["result"] == "ANTHROPIC-OUT" and r["result_source"] == "anthropic"
-    assert abs(r["actual_cost"] - (1000 * 3 + 500 * 15) / 1e6) < 1e-9
-    assert fake.calls["anthropic"] == 1 and fake.calls["openai"] == 0
+    assert r["status"] == "Completed" and r["result"] == "CLAUDE-OUT" and r["result_source"] == "claude_cli"
+    assert r["actual_cost"] == 0.0  # gói thuê bao: không tính USD theo token
+    assert fake.calls["claude_cli"] == 1 and fake.calls["codex_cli"] == 0
     u = client.get("/api/usage").json()[0]
-    assert u["provider"] == "anthropic" and u["input_tokens"] == 1000
-    assert client.get("/api/dashboard").json()["spend_today_usd"] > 0
-
-
-def test_cost_unknown_when_price_not_configured(client):
-    p = mk_project(client)
-    t = mk_task(client, p["id"], "game_dev")
-    r = client.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()
-    assert r["status"] == "Completed" and r["actual_cost"] is None and r["estimated_cost"] is None
-    assert client.get("/api/usage").json()[0]["cost_usd"] is None  # không bịa giá
+    assert u["provider"] == "claude_cli" and u["input_tokens"] == 1000 and u["cost_usd"] == 0.0
 
 
 def test_retry_then_fail_is_bounded(client, fake):
-    fake.mode["anthropic"] = "500"
+    fake.mode["claude_cli"] = "overloaded"
     p = mk_project(client)
     t = mk_task(client, p["id"], "game_dev", max_retries=2)
     r = client.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()
-    assert r["status"] == "Failed" and "500" in r["error"]
-    assert fake.calls["anthropic"] == 3 and len(r["attempts"]) == 3  # 1 + 2 retry, không vô hạn
+    assert r["status"] == "Failed" and "503" in r["error"]
+    assert fake.calls["claude_cli"] == 3 and len(r["attempts"]) == 3  # 1 + 2 retry, không vô hạn
 
 
 def test_non_retryable_error_does_not_retry(client, fake):
-    fake.mode["anthropic"] = "401"
+    fake.mode["claude_cli"] = "notlogged"
     p = mk_project(client)
     t = mk_task(client, p["id"], "game_dev", max_retries=3)
     r = client.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()
-    assert r["status"] == "Failed" and fake.calls["anthropic"] == 1
-
-
-def test_timeout_is_retryable_and_reported(client, fake):
-    fake.mode["openai"] = "timeout"
-    p = mk_project(client)
-    t = mk_task(client, p["id"], "market_research", max_retries=1)
-    r = client.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()
-    assert r["status"] == "Failed" and "timeout" in r["error"].lower() and fake.calls["openai"] == 2
+    assert r["status"] == "Failed" and fake.calls["claude_cli"] == 1 and "chưa đăng nhập" in r["error"]
 
 
 def test_fallback_only_when_enabled(client, fake):
-    fake.mode["anthropic"] = "401"
+    fake.mode["claude_cli"] = "fail"
     p = mk_project(client)
     t = mk_task(client, p["id"], "game_dev", max_retries=0)
     assert client.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()["status"] == "Failed"
     client.patch("/api/system/settings", json={"fallback_enabled": True})
     r = client.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()
-    assert r["status"] == "Completed" and r["result_source"] == "openai"
+    assert r["status"] == "Completed" and r["result_source"] == "codex_cli"
 
 
 def test_explicit_unusable_provider_is_422(offline):
     p = mk_project(offline)
-    t = mk_task(offline, p["id"], "game_dev", provider="anthropic")
-    r = offline.post(f"/api/tasks/{t['id']}/run")
-    assert r.status_code == 422
+    t = mk_task(offline, p["id"], "game_dev", provider="claude_cli")
+    assert offline.post(f"/api/tasks/{t['id']}/run").status_code == 422
 
 
-# ---------- ngân sách ----------
-def test_budget_blocks_when_exceeded(client, fake):
-    client.patch("/api/providers/anthropic", json={"price_in_per_mtok": 1000.0, "price_out_per_mtok": 1000.0})
-    client.patch("/api/system/settings", json={"approval_cost_threshold_usd": 1000})
+# ---------- ngân sách (logic kiểm tra; CLI/nội bộ luôn 0 USD nên cần dữ liệu chi phí để kích hoạt) ----------
+def _seed_spend(c, project_id, cost):
+    from app.models import UsageRecord
+    with c.app.state.sf() as s:
+        s.add(UsageRecord(project_id=project_id, department_key="game_dev", provider="claude_cli", model="", cost_usd=cost))
+        s.commit()
+
+
+def test_budget_blocks_when_already_spent(client, fake):
     p = mk_project(client)
     client.post("/api/budgets", json={"scope": "studio", "period": "daily", "limit_usd": 0.5})
-    t = mk_task(client, p["id"], "game_dev", max_output_tokens=1024)  # ước tính ~1.0+ USD
+    _seed_spend(client, p["id"], 0.6)  # đã tiêu quá hạn mức (vd. dịch vụ trả phí khác ghi nhận chi phí)
+    t = mk_task(client, p["id"], "game_dev")
     r = client.post(f"/api/tasks/{t['id']}/run")
     assert r.status_code == 402 and "ngân sách" in r.json()["detail"].lower()
-    assert fake.calls["anthropic"] == 0  # không gọi API khi vượt ngân sách
+    assert fake.calls["claude_cli"] == 0  # không gọi khi vượt ngân sách
     assert client.get(f"/api/tasks/{t['id']}").json()["status"] == "Blocked"
 
 
-def test_budget_requires_price_for_external(client, fake):
-    client.post("/api/budgets", json={"scope": "studio", "period": "monthly", "limit_usd": 10})
+def test_budget_does_not_block_when_under_limit(client):
     p = mk_project(client)
+    client.post("/api/budgets", json={"scope": "studio", "period": "daily", "limit_usd": 10})
+    _seed_spend(client, p["id"], 1.0)
     t = mk_task(client, p["id"], "game_dev")
-    r = client.post(f"/api/tasks/{t['id']}/run")
-    assert r.status_code == 402 and "giá" in r.json()["detail"] and fake.calls["anthropic"] == 0
+    assert client.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()["status"] == "Completed"
 
 
-def test_budget_does_not_block_internal_mode(offline):
-    offline.post("/api/budgets", json={"scope": "studio", "period": "daily", "limit_usd": 0.01})
-    p = mk_project(offline)
-    t = mk_task(offline, p["id"], "qa")
-    assert offline.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()["status"] == "Completed"
-
-
-def test_task_budget_limit(client):
-    client.patch("/api/providers/anthropic", json={"price_in_per_mtok": 1000.0, "price_out_per_mtok": 1000.0})
-    client.patch("/api/system/settings", json={"approval_cost_threshold_usd": 1000})
+def test_budget_summary_ratio_and_warning(client):
     p = mk_project(client)
-    t = mk_task(client, p["id"], "game_dev", budget_limit=0.001)
-    assert client.post(f"/api/tasks/{t['id']}/run").status_code == 402
+    client.post("/api/budgets", json={"scope": "project", "scope_key": str(p["id"]), "period": "total", "limit_usd": 2})
+    _seed_spend(client, p["id"], 1.0)
+    b = client.get("/api/budgets").json()[0]
+    assert abs(b["spent_usd"] - 1.0) < 1e-9 and abs(b["ratio"] - 0.5) < 1e-9
 
 
 def test_budget_validation(client):
@@ -229,14 +235,6 @@ def test_rejected_approval_cancels_task(offline):
     a = offline.get("/api/approvals").json()[0]
     offline.post(f"/api/approvals/{a['id']}/decision", json={"approve": False})
     assert offline.get(f"/api/tasks/{t['id']}").json()["status"] == "Cancelled"
-
-
-def test_cost_over_threshold_requires_approval(client, fake):
-    client.patch("/api/providers/anthropic", json={"price_in_per_mtok": 1000.0, "price_out_per_mtok": 1000.0})
-    p = mk_project(client)
-    t = mk_task(client, p["id"], "game_dev")
-    assert client.post(f"/api/tasks/{t['id']}/run").status_code == 409
-    assert fake.calls["anthropic"] == 0
 
 
 # ---------- dependency, hủy, trùng lặp, dừng khẩn cấp ----------
@@ -282,7 +280,7 @@ def test_emergency_stop(client, fake):
     r = client.post("/api/system/emergency-stop", json={"active": True}).json()
     assert r["emergency_stop"] is True
     assert client.post(f"/api/tasks/{t['id']}/run").status_code == 423
-    assert fake.calls["anthropic"] == 0
+    assert fake.calls["claude_cli"] == 0
     client.post("/api/system/emergency-stop", json={"active": False})
     assert client.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()["status"] == "Completed"
 
@@ -308,10 +306,19 @@ def test_audit_log_records_actions(client):
     assert {"login", "project_created", "task_created", "bootstrap_owner"} <= actions
 
 
-def test_no_secret_leak_in_api(client):
-    dump = str(client.get("/api/providers").json()) + str(client.get("/api/dashboard").json())
-    assert "sk-test-openai" not in dump and "sk-ant-test" not in dump
-
+def test_no_api_key_concept_left(client):
+    def keys(x):
+        if isinstance(x, dict):
+            for k, v in x.items():
+                yield k
+                yield from keys(v)
+        elif isinstance(x, list):
+            for v in x:
+                yield from keys(v)
+    names = set()
+    for url in ("/api/providers", "/api/dashboard", "/api/system/state"):
+        names |= set(keys(client.get(url).json()))
+    assert not {n for n in names if "key" in n.lower() or "price" in n.lower() or n == "prefer_cli"}, names
 
 def test_task_validation(client):
     p = mk_project(client)

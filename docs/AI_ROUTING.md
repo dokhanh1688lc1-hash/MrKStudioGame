@@ -1,30 +1,31 @@
 # Định tuyến AI
 
-Chính sách mặc định (mỗi phòng ban có `preferred_provider`, đổi được ở giao diện):
+Hệ thống **không dùng API key**. AI chạy qua hai chương trình dòng lệnh đã cài và đăng nhập sẵn trên máy (xem [README](../README.md)):
 
-| Nhóm | Provider ưu tiên |
+| Provider | Chương trình | Tài khoản |
+|---|---|---|
+| `claude_cli` | Claude Code (`claude -p`) | Claude |
+| `codex_cli` | OpenAI Codex CLI (`codex exec`) | ChatGPT |
+| `internal` | (không gọi AI) | — |
+
+Mỗi phòng ban có một “họ” ưu tiên, đổi được ở giao diện: `openai` → `codex_cli`, `anthropic` → `claude_cli`.
+
+| Nhóm | Họ ưu tiên (mặc định) |
 |---|---|
-| Market Research, Game Design, Art, Audio, Monetization, Marketing, Analytics, Finance, Compliance, CEO | OpenAI |
-| Game Dev, QA, DevOps, Operations | Anthropic |
+| Market Research, Game Design, Art, Audio, Monetization, Marketing, Analytics, Finance, Compliance, CEO | ChatGPT (Codex) |
+| Game Dev, QA, DevOps, Operations | Claude (Claude Code) |
 
 Thứ tự quyết định khi chạy nhiệm vụ:
-1. Nhiệm vụ **chỉ định provider** → dùng đúng provider đó; nếu không dùng được (tắt/thiếu khóa/thiếu model/không được nhận dữ liệu nhạy cảm) → lỗi 422, **không âm thầm đổi**.
-2. Ngược lại: provider ưu tiên của phòng ban → provider ngoài còn lại → **chế độ nội bộ** (nếu không provider AI nào dùng được).
-3. Một provider “dùng được” khi: bật, có API key (env), có Model ID, và (nếu task nhạy cảm) có `allow_sensitive`.
-4. **Fallback khi lỗi lúc chạy**: chỉ khi bật “Cho phép tự chuyển provider” (mặc định tắt) và task không chỉ định provider.
-5. Lỗi retry được: timeout, HTTP 429, 5xx; tối đa `max_retries` (0–3). Lỗi 4xx khác không retry.
-6. Mỗi lần gọi kiểm tra lại ngân sách. Vượt ngân sách → dừng, không gọi API.
+1. Nhiệm vụ **chỉ định provider** → dùng đúng provider đó; không dùng được (tắt / không tìm thấy chương trình / không được nhận dữ liệu nhạy cảm) → lỗi 422, **không âm thầm đổi**. Nhiệm vụ cũ lưu `openai`/`anthropic` được ánh xạ sang `codex_cli`/`claude_cli`.
+2. Ngược lại: chương trình của họ ưu tiên → chương trình còn lại → **chế độ nội bộ** (nếu không chương trình nào dùng được).
+3. Một provider “dùng được” khi: đã **bật**, tìm thấy chương trình trên máy, và (nếu task nhạy cảm) có `allow_sensitive`. Mặc định hai CLI **tắt**; bật sau khi “Kiểm tra kết nối” hiện `ok`.
+4. **Fallback khi lỗi lúc chạy** sang chương trình còn lại: chỉ khi bật “Cho phép tự chuyển provider” (mặc định tắt) và task không chỉ định provider.
+5. Lỗi retry được: timeout, quá tải (429/502/503/504, “overloaded”); tối đa `max_retries` (0–3). Chưa đăng nhập, hết hạn mức gói (“usage limit”) và lỗi khác **không** retry.
+6. Mỗi lần gọi kiểm tra lại Emergency Stop và ngân sách.
 
-## Dùng Claude / ChatGPT đã đăng nhập sẵn trên máy (không cần API key)
-Hai provider thêm: `claude_cli` (Claude Code, lệnh `claude -p`) và `codex_cli` (OpenAI Codex CLI, lệnh `codex exec`).
-- Cần cài sẵn và đăng nhập: `claude` (tài khoản Claude), `codex login` → *Sign in with ChatGPT*. Ứng dụng desktop ChatGPT/Claude **không** có giao diện lập trình nên không điều khiển được; chỉ hai công cụ dòng lệnh này được hỗ trợ chính thức cho việc chạy tự động.
-- **Mặc định TẮT.** Vào *AI Provider & Routing* → *Kiểm tra kết nối* (gọi `--version` và lệnh xem trạng thái đăng nhập, không tốn hạn mức) → bật.
-- Trong cùng một họ, nếu bật “Ưu tiên CLI” (mặc định bật): OpenAI-family → `codex_cli` rồi `openai`; Anthropic-family → `claude_cli` rồi `anthropic`. Tắt công tắc để ưu tiên API.
-- Chi phí: tính vào hạn mức gói thuê bao, không có giá theo token → hệ thống ghi 0 USD và **không** theo dõi tiền cho CLI (ngân sách USD không áp dụng). Xem giới hạn gói của bạn ở nhà cung cấp.
-- Lỗi “usage limit” (hết hạn mức gói) không retry; có thể bật fallback sang API.
-- Đã kiểm thử với `claude` thật (gọi nhỏ, nhận kết quả + số token) và kiểm tra trạng thái của `codex` thật; **chưa** chạy được nhiệm vụ thật qua `codex` (cần đăng nhập ChatGPT trên máy bạn).
+Chi phí: gói thuê bao, không có giá theo token → hệ thống ghi 0 USD cho CLI và nội bộ, **không** theo dõi tiền thật. Số token (nếu chương trình báo) vẫn được lưu. Hạn mức gói xem ở nhà cung cấp.
 
-Model ID và giá **không hardcode**: cấu hình ở giao diện hoặc `OPENAI_DEFAULT_MODEL` / `ANTHROPIC_DEFAULT_MODEL`.
-Giá chưa cấu hình → chi phí hiển thị “chưa biết”; nếu đang có ngân sách thì chặn gọi provider ngoài.
+Model: để trống = dùng model mặc định của chương trình; có thể đặt trong *AI Provider & Routing* (kiểm tra regex, không qua shell).
 
-Chưa triển khai: đánh giá chéo giữa hai provider (cross-review), giới hạn số lần gọi theo thời gian.
+Đã kiểm thử với `claude` thật (gọi nhỏ, nhận kết quả + số token) và kiểm tra trạng thái đăng nhập của `codex` thật; **chưa** chạy nhiệm vụ thật qua `codex`.
+Chưa triển khai: đánh giá chéo giữa hai provider, giới hạn số lần gọi theo thời gian, theo dõi hạn mức gói.

@@ -21,27 +21,43 @@ def test_migration_matches_models(tmp_path):
     assert diff == [], diff
 
 
-def test_legacy_db_without_alembic_is_stamped_and_keeps_data(tmp_path):
-    url = f"sqlite:///{tmp_path/'old.db'}"
+def _legacy_db(url):
+    """DB do phiên bản cũ: schema baseline 0001 (còn cột giá), chưa có bảng alembic_version."""
+    from alembic import command
+    from app.migrate import make_config
     e = create_engine(url)
-    Base.metadata.create_all(e)  # giống DB cũ tạo bằng create_all
     with e.begin() as c:
+        command.upgrade(make_config(c), "0001")
+        c.exec_driver_sql("DROP TABLE alembic_version")
         c.exec_driver_sql("INSERT INTO projects (name, description, genre, platform, target_market, status, workspace_path, created_at, updated_at) "
                           "VALUES ('Cũ','','','','','Research','', '2026-01-01', '2026-01-01')")
+    return e
+
+
+def test_legacy_db_without_alembic_is_stamped_upgraded_and_keeps_data(tmp_path):
+    e = _legacy_db(f"sqlite:///{tmp_path/'old.db'}")
     assert migrate(e) == "stamped"
-    assert migrate(e) == "upgraded"  # lần sau là upgrade head (không làm gì)
+    assert migrate(e) == "upgraded"  # lần sau chỉ upgrade head (không làm gì)
     with e.connect() as c:
         assert c.exec_driver_sql("SELECT name FROM projects").scalar() == "Cũ"
-        assert "alembic_version" in inspect(c).get_table_names()
+        cols = {r["name"] for r in inspect(c).get_columns("provider_configs")}
+        assert "price_in_per_mtok" not in cols and "allow_sensitive" in cols
 
 
-def test_app_starts_on_legacy_db(tmp_path, fake=None):
+def test_app_starts_on_legacy_db_and_removes_old_api_providers(tmp_path):
+    from fastapi.testclient import TestClient
     url = f"sqlite:///{tmp_path/'old.db'}"
-    Base.metadata.create_all(create_engine(url))
+    e = _legacy_db(url)
+    with e.begin() as c:  # provider API của bản cũ, kèm giá
+        c.exec_driver_sql("INSERT INTO provider_configs (name, enabled, default_model, allow_sensitive, last_check_status, last_check_message, price_in_per_mtok, price_out_per_mtok) "
+                          "VALUES ('openai', 1, 'm', 0, 'ok', '', 1.0, 2.0)")
     app = create_app(Settings(database_url=url, secret_key="s", admin_password="Passw0rd!x", data_dir=tmp_path / "d",
                               games_dir=tmp_path / "g", frontend_dist=tmp_path / "x"))
-    from fastapi.testclient import TestClient
-    assert TestClient(app).get("/api/health").status_code == 200
+    c = TestClient(app)
+    c.headers["Authorization"] = "Bearer " + c.post("/api/auth/login", json={"username": "owner", "password": "Passw0rd!x"}).json()["token"]
+    assert {p["name"] for p in c.get("/api/providers").json()} == {"claude_cli", "codex_cli", "internal"}
+    assert c.get("/api/projects").json()["items"][0]["name"] == "Cũ"
+    assert any(b["name"].startswith("mrk-") for b in c.get("/api/system/backups").json())  # đã sao lưu trước khi migrate
 
 
 def test_manual_backup_is_valid_sqlite_with_data_and_listed(client, tmp_path):

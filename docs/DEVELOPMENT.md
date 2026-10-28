@@ -10,6 +10,6 @@ cd frontend && npm run dev                                                    # 
   cd backend && python -c "from sqlalchemy import create_engine; from alembic import command; from app.migrate import make_config; e=create_engine('sqlite:///tmp_mig.db'); c=e.connect(); command.upgrade(make_config(c),'head'); command.revision(make_config(c), message='mo ta', autogenerate=True); c.commit()"
   ```
   rồi kiểm tra file sinh ra trong `migrations/versions/`. Test `test_migration_matches_models` sẽ fail nếu models và migration lệch nhau. Ứng dụng tự sao lưu database trước khi migrate.
-- Thêm provider: kế thừa `providers.base.Provider`, đăng ký trong `ProviderRegistry`, thêm dòng `ProviderConfig` ở `seed.py`.
+- Thêm provider: kế thừa `providers.base.Provider` (xem `providers/cli_providers.py`), đăng ký trong `ProviderRegistry`, thêm tên vào danh sách `ProviderConfig` ở `seed.py`.
 - Thêm phòng ban: thêm vào `DEPARTMENTS` trong `services/seed.py`.
-- Mỗi dependency có lý do: fastapi/uvicorn (API), sqlalchemy (DB), httpx (gọi provider + test), pytest (test). Không dùng Redis/Celery vì hàng đợi đơn giản trong DB là đủ ở quy mô hiện tại.
+- Mỗi dependency có lý do: fastapi/uvicorn (web), sqlalchemy + alembic (DB), pytest (test); python-multipart (nhận tệp tải lên). Không dùng Redis/Celery vì hàng đợi đơn giản trong DB là đủ ở quy mô hiện tại.

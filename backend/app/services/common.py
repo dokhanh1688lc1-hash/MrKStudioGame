@@ -22,8 +22,7 @@ def audit(s: Session, actor: str, action: str, entity: str = "", entity_id: str 
 DEFAULT_SETTINGS = {
     "emergency_stop": "0",
     "fallback_enabled": "0",           # cho phép chuyển sang provider ngoài còn lại khi lỗi
-    "prefer_cli": "1",                 # ưu tiên CLI thuê bao (Claude Code/Codex) trước API khi cùng họ
-    "approval_cost_threshold_usd": "1.0",  # ước tính vượt ngưỡng này → cần phê duyệt
+    "approval_cost_threshold_usd": "1.0",  # (CLI/nội bộ luôn 0 USD nên ngưỡng này hiện không kích hoạt)
 }
 
 

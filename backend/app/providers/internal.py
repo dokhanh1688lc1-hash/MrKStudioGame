@@ -20,6 +20,6 @@ class InternalProvider(Provider):
         return True, "Chế độ nội bộ luôn sẵn sàng (không gọi AI)."
 
     def complete(self, *, system, prompt, model, max_tokens, timeout) -> ProviderResult:
-        text = f"{LABEL}\n\n{prompt}\n\n---\nBước tiếp theo: cấu hình OpenAI/Anthropic để AI thực hiện nhiệm vụ này, " \
+        text = f"{LABEL}\n\n{prompt}\n\n---\nBước tiếp theo: bật Claude Code / Codex (đã đăng nhập trên máy) để AI thực hiện nhiệm vụ này, " \
                f"hoặc hoàn thành thủ công theo các tiêu chí nghiệm thu ở trên."
         return ProviderResult(text, 0, 0)

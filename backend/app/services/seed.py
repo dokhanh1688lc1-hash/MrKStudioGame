@@ -48,13 +48,15 @@ def seed_all(s: Session, settings: Settings) -> str | None:
             s.add(Agent(department_id=dept.id, name=f"Agent {name}",
                         system_prompt=f"{BASE_RULES}\nVai trò: {name}. Phạm vi: {desc}"))
 
-    for name, model in (("openai", settings.openai_default_model),
-                        ("anthropic", settings.anthropic_default_model), ("claude_cli", ""), ("codex_cli", ""),
-                        ("internal", "internal")):
+    # Bản cũ có provider API (openai/anthropic): gỡ cấu hình, nhiệm vụ cũ được ánh xạ sang CLI khi chạy.
+    for legacy in s.scalars(select(ProviderConfig).where(ProviderConfig.name.in_(("openai", "anthropic")))):
+        audit(s, "system", "legacy_api_provider_removed", "provider", legacy.name)
+        s.delete(legacy)
+    for name in ("claude_cli", "codex_cli", "internal"):
         if not s.scalar(select(ProviderConfig).where(ProviderConfig.name == name)):
-            # CLI thuê bao: mặc định TẮT (người dùng tự bật sau khi kiểm tra kết nối)
-            s.add(ProviderConfig(name=name, default_model=model, allow_sensitive=(name == "internal"),
-                                 enabled=not name.endswith("_cli")))
+            # CLI: mặc định TẮT (người dùng tự bật sau khi kiểm tra kết nối)
+            s.add(ProviderConfig(name=name, default_model="internal" if name == "internal" else "",
+                                 allow_sensitive=(name == "internal"), enabled=(name == "internal")))
 
     generated = None
     if not s.scalar(select(User).limit(1)):

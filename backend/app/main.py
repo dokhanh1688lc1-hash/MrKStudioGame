@@ -19,8 +19,7 @@ from .services.seed import recover_interrupted, seed_all
 log = logging.getLogger("mrk")
 
 
-def create_app(settings: Settings | None = None, transports: dict | None = None,
-               retry_delay: float = 1.0) -> FastAPI:
+def create_app(settings: Settings | None = None, retry_delay: float = 1.0) -> FastAPI:
     settings = settings or Settings.from_env()
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.games_dir.mkdir(parents=True, exist_ok=True)
@@ -39,7 +38,7 @@ def create_app(settings: Settings | None = None, transports: dict | None = None,
     app.state.engine = engine
     app.state.secret = settings.ensure_secret()
     app.state.sf = sf
-    app.state.registry = ProviderRegistry(settings, transports)
+    app.state.registry = ProviderRegistry(settings)
     app.state.orch = Orchestrator(sf, app.state.registry, retry_delay=retry_delay)
 
     with sf() as s:
