@@ -29,3 +29,10 @@ Model: để trống = dùng model mặc định của chương trình; có th�
 
 Đã kiểm thử với `claude` thật (gọi nhỏ, nhận kết quả + số token) và kiểm tra trạng thái đăng nhập của `codex` thật; **chưa** chạy nhiệm vụ thật qua `codex`.
 Chưa triển khai: đánh giá chéo giữa hai provider, giới hạn số lần gọi theo thời gian, theo dõi hạn mức gói.
+
+## Đánh giá chéo (cross-review)
+
+Với nhiệm vụ đã hoàn thành do Claude Code hoặc Codex tạo, nút **Đánh giá chéo bằng AI còn lại** tạo một nhiệm vụ mới
+giao cho CLI kia (Claude ↔ Codex), phụ thuộc vào nhiệm vụ gốc nên kết quả gốc được đưa vào làm ngữ cảnh. Người đánh giá chấm
+điểm 1–10, kết luận Chấp nhận / Sửa lại / Từ chối, nêu lỗi và việc cần sửa. Nhiệm vụ này vẫn chịu giới hạn lượt chạy và cần
+provider kia đã được bật. Kết quả nội bộ (`internal`) không đánh giá chéo.

@@ -336,6 +336,9 @@ export function Tasks({ role }: Role) {
                       {canEdit(role) && detail.data.status === "Completed" && detail.data.result_source !== "internal" && <> · <button className="btn ghost" disabled={busy} onClick={async () => {
                         await run(async () => { const r = await api<any>(`/tasks/${detail.data.id}/extract-changes`, { method: "POST" }); setExtract(r); }, "Đã trích đề xuất sửa file. Xem trong Dự án → Mã nguồn → Sửa file trên máy.");
                       }}>Trích đề xuất sửa file</button></>}
+                      {canEdit(role) && detail.data.status === "Completed" && detail.data.result_source !== "internal" && <> · <button className="btn ghost" disabled={busy} onClick={async () => {
+                        await run(async () => { const r = await api<any>(`/tasks/${detail.data.id}/cross-review`, { method: "POST" }); setSavedPath(`Đã tạo nhiệm vụ #${r.task_id} do ${r.reviewer_name} đánh giá — chạy nó trong danh sách nhiệm vụ.`); refresh(); }, "Đã tạo nhiệm vụ đánh giá chéo.");
+                      }}>Đánh giá chéo bằng AI còn lại</button></>}
                       {savedPath && <> · <code>{savedPath}</code></>}</p>
                     {extract && <div className="msg okk">Tạo {extract.created.length} đề xuất.{extract.errors.length > 0 && <> Không dùng được {extract.errors.length}: <ul>{extract.errors.map((m: string, i: number) => <li key={i}>{m}</li>)}</ul></>}</div>}
                     <pre className="out">{detail.data.result}</pre>

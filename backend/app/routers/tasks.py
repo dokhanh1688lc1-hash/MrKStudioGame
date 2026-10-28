@@ -6,7 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from ..deps import Principal, current_user, get_db, require
-from ..models import Agent, Department, Project, Task, TaskDependency
+from ..models import Agent, Department, ProviderConfig, Project, Task, TaskDependency
 from ..schemas import BulkTaskIn, TaskDetail, TaskIn, TaskOut
 from ..services.common import EngineError, audit, slugify
 from ..services.templates import all_templates
@@ -115,6 +115,47 @@ def create_bulk(body: BulkTaskIn, request: Request, user: Principal = Depends(re
             except EngineError as e:
                 errors[tid] = e.message
     return {"task_ids": ids, "started": started, "run_errors": errors}
+
+
+OTHER_CLI = {"claude_cli": "codex_cli", "codex_cli": "claude_cli"}
+CLI_NAME = {"claude_cli": "Claude Code", "codex_cli": "Codex (ChatGPT)"}
+
+
+@router.post("/{tid}/cross-review", status_code=201)
+def cross_review(tid: int, user: Principal = Depends(require("manager")), s: Session = Depends(get_db)):
+    """Đánh giá chéo: nhờ AI còn lại (Claude ↔ Codex) kiểm tra độc lập kết quả của một nhiệm vụ đã hoàn thành."""
+    t = s.get(Task, tid)
+    if not t:
+        raise HTTPException(404, "Không tìm thấy nhiệm vụ.")
+    if t.status != "Completed" or not t.result:
+        raise HTTPException(409, "Nhiệm vụ chưa hoàn thành.")
+    reviewer = OTHER_CLI.get(t.result_source or "")
+    if not reviewer:
+        raise HTTPException(409, "Kết quả này không do Claude Code/Codex tạo (chế độ nội bộ) nên không có gì để đánh giá chéo.")
+    cfg = s.scalar(select(ProviderConfig).where(ProviderConfig.name == reviewer))
+    if not cfg or not cfg.enabled:
+        raise HTTPException(409, f"Hãy bật {CLI_NAME[reviewer]} ({reviewer}) trong AI Provider & Routing trước khi đánh giá chéo.")
+    p = s.get(Project, t.project_id)
+    if p and p.status == "Archived":
+        raise HTTPException(409, "Dự án đã lưu trữ (Archived).")
+    agent = s.scalar(select(Agent).join(Department, Agent.department_id == Department.id)
+                     .where(Department.key == t.department_key, Agent.enabled.is_(True)).order_by(Agent.id))
+    if not agent:
+        raise HTTPException(409, "Phòng ban chưa có agent nào được bật.")
+    r = Task(project_id=t.project_id, department_key=t.department_key, agent_id=agent.id, status="Assigned",
+             title=f"Đánh giá chéo: {t.title}"[:200], provider=reviewer, sensitive=t.sensitive,
+             objective=("Bạn là người đánh giá độc lập. Hãy kiểm tra KẾT QUẢ của nhiệm vụ dưới đây (xem mục “Kết quả từ bước trước”) "
+                        f"so với yêu cầu gốc.\n\nYÊU CẦU GỐC:\n{t.objective}\n\nTiêu chí nghiệm thu gốc:\n{t.acceptance_criteria or '(không có)'}"),
+             expected_output=("1) Điểm 1–10 và kết luận một trong: Chấp nhận / Sửa lại / Từ chối. 2) Lỗi, thiếu sót, chỗ bịa hoặc không có căn cứ "
+                              "(nêu cụ thể trích dẫn). 3) Rủi ro. 4) Danh sách sửa cụ thể theo thứ tự ưu tiên. 5) Điểm làm tốt."),
+             acceptance_criteria="Đánh giá dựa trên nội dung thật của kết quả, không khen chung chung; nói rõ khi thiếu thông tin để kết luận.",
+             max_output_tokens=3000, timeout_s=180)
+    s.add(r)
+    s.flush()
+    s.add(TaskDependency(task_id=r.id, depends_on_id=t.id))
+    audit(s, user.username, "cross_review_created", "task", t.id, f"→ #{r.id} bằng {reviewer}")
+    s.commit()
+    return {"task_id": r.id, "reviewer": reviewer, "reviewer_name": CLI_NAME[reviewer]}
 
 
 @router.get("/templates/all")
