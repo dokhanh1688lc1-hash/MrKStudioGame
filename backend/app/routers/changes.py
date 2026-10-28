@@ -65,9 +65,23 @@ def set_write_access(pid: int, body: WriteIn, user: Principal = Depends(require(
     if body.enabled:
         _root(s, p)  # phải liên kết thư mục hợp lệ trong vùng cho phép
     p.allow_write = body.enabled
+    if not body.enabled:
+        p.auto_apply = False  # tắt quyền ghi thì tự áp dụng cũng tắt
     audit(s, user.username, "project_write_access", "project", p.id, "bật" if body.enabled else "tắt")
     s.commit()
     return {"allow_write": p.allow_write}
+
+
+@router.put("/projects/{pid}/auto-apply")
+def set_auto_apply(pid: int, body: WriteIn, user: Principal = Depends(require("owner")), s: Session = Depends(get_db)):
+    """Cho AI tự ghi đè file trong thư mục dự án khi hoàn thành nhiệm vụ (cần đã bật quyền ghi). Vẫn sao lưu và hoàn tác được."""
+    p = _project(s, pid)
+    if body.enabled and not p.allow_write:
+        raise HTTPException(409, "Hãy bật quyền ghi vào thư mục dự án trước.")
+    p.auto_apply = body.enabled
+    audit(s, user.username, "project_auto_apply", "project", p.id, "bật" if body.enabled else "tắt")
+    s.commit()
+    return {"auto_apply": p.auto_apply}
 
 
 @router.post("/tasks/{tid}/extract-changes", status_code=201)
@@ -139,7 +153,7 @@ def list_changes(pid: int, status: str = Query("", max_length=12), _: Principal 
     if status:
         q = q.where(FileChange.status == status)
     rows = s.scalars(q.order_by(FileChange.id.desc()).limit(200)).all()
-    return {"allow_write": p.allow_write, "items": [_row(s, p, c) for c in rows]}
+    return {"allow_write": p.allow_write, "auto_apply": p.auto_apply, "items": [_row(s, p, c) for c in rows]}
 
 
 def _get(s: Session, cid: int) -> tuple[FileChange, Project]:

@@ -16,7 +16,7 @@ function Diff({ text }: { text: string }) {
 export function ChangesPanel({ project, role, onChanged }: { project: any; role: string; onChanged: () => void }) {
   const [tick, setTick] = useState(0);
   const isFolder = project.source_type === "folder";
-  const list = useLoad<{ allow_write: boolean; items: any[] }>(isFolder ? `/projects/${project.id}/changes` : null, [tick, project.allow_write]);
+  const list = useLoad<{ allow_write: boolean; auto_apply?: boolean; items: any[] }>(isFolder ? `/projects/${project.id}/changes` : null, [tick, project.allow_write]);
   const [path, setPath] = useState(""); const [content, setContent] = useState(""); const [loaded, setLoaded] = useState("");
   const { run, busy, banner } = useAction();
   const owner = role === "owner"; const manager = role === "owner" || role === "manager";
@@ -38,6 +38,11 @@ export function ChangesPanel({ project, role, onChanged }: { project: any; role:
           onChange={(e) => run(() => api(`/projects/${project.id}/write-access`, { method: "PUT", body: { enabled: e.target.checked } }), e.target.checked ? "Đã cho phép ghi vào thư mục dự án." : "Đã tắt quyền ghi.", e.target.checked ? `Cho phép hệ thống GHI vào thư mục ${project.source_ref} (sau mỗi lần bạn bấm Áp dụng)?` : undefined).then(refresh)} />
           {" "}Cho phép ghi vào thư mục gốc của dự án này</label></p>
       ) : <p>Quyền ghi: <Badge v={allow ? "Đã bật" : "Tắt"} /> (chỉ chủ studio bật/tắt và áp dụng)</p>}
+      {owner && allow && (
+        <p><label style={{ margin: 0 }}><input type="checkbox" style={{ width: "auto" }} checked={!!list.data?.auto_apply} disabled={busy}
+          onChange={(e) => run(() => api(`/projects/${project.id}/auto-apply`, { method: "PUT", body: { enabled: e.target.checked } }), e.target.checked ? "AI sẽ tự ghi đè file khi hoàn thành nhiệm vụ." : "Đã tắt tự áp dụng.", e.target.checked ? "Cho phép AI TỰ GHI ĐÈ file trong thư mục dự án khi nhiệm vụ Game Development hoàn thành (không cần bấm Áp dụng)? Vẫn có sao lưu và nút Hoàn tác." : undefined).then(refresh)} />
+          {" "}Cho AI <b>tự ghi đè</b> file dự án khi hoàn thành nhiệm vụ (có sao lưu, hoàn tác được)</label></p>
+      )}
 
       <Async loading={list.loading} error={list.error}>
         <b>Đề xuất chờ duyệt ({pending.length})</b>

@@ -40,6 +40,7 @@ def create_app(settings: Settings | None = None, retry_delay: float = 1.0) -> Fa
     app.state.sf = sf
     app.state.registry = ProviderRegistry(settings)
     app.state.orch = Orchestrator(sf, app.state.registry, retry_delay=retry_delay)
+    app.state.orch.data_dir = settings.data_dir
 
     with sf() as s:
         pwd = seed_all(s, settings)

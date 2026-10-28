@@ -51,6 +51,7 @@ class Project(Base, Stamped):
     source_branch: Mapped[str] = mapped_column(String(100), default="")
     source_synced_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     allow_write: Mapped[bool] = mapped_column(Boolean, default=False)   # cho phép ghi vào thư mục gốc trên máy
+    auto_apply: Mapped[bool] = mapped_column(Boolean, default=False)    # AI tự áp dụng thay đổi file (cần allow_write)
     tasks: Mapped[list["Task"]] = relationship(back_populates="project")
     __table_args__ = (CheckConstraint(_in("status", PROJECT_STATUSES), name="ck_project_status"),)
 

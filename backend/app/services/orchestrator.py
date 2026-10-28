@@ -183,6 +183,51 @@ class Orchestrator:
             self.run_async(tid, chain, actor)
         return out
 
+    # ---------- tự áp dụng thay đổi file (chỉ khi chủ studio bật cho dự án) ----------
+    def auto_apply_changes(self, task_id: int) -> None:
+        """Nếu dự án bật quyền ghi + tự áp dụng: trích khối <<<FILE>>> trong kết quả và ghi thẳng (có sao lưu, hoàn tác được).
+        Thay đổi lỗi/lỗi thời được giữ ở trạng thái chờ duyệt; không bao giờ làm hỏng nhiệm vụ."""
+        from datetime import datetime
+        from ..models import FileChange
+        from . import changes as ch
+        from . import sources as src
+        data_dir = getattr(self, "data_dir", None)
+        if data_dir is None:
+            return
+        with self.sf() as s:
+            t = s.get(Task, task_id)
+            if not t or t.status != "Completed" or not t.result or t.result_source in (None, "internal"):
+                return
+            p = s.get(Project, t.project_id)
+            if not p or not (p.allow_write and p.auto_apply) or p.source_type != "folder" or p.status in ("Archived", "Paused"):
+                return
+            if get_bool(s, "emergency_stop"):
+                return
+            try:
+                root = src.resolve_allowed(s, p.source_ref)
+                proposals, errors = ch.parse_ai_output(t.result, root)
+            except EngineError:
+                return
+            if not proposals:
+                return
+            applied = 0
+            for pr in proposals:
+                c = FileChange(project_id=p.id, task_id=t.id, path=pr.rel, new_content=pr.new_content, base_sha=pr.base_sha,
+                               source="ai", created_by="auto")
+                s.add(c)
+                s.flush()
+                bdir = data_dir / "file-backups" / str(p.id) / f"{c.id}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+                try:
+                    res = ch.apply_change(root, c.path, c.new_content, c.base_sha, bdir)
+                except (EngineError, OSError):
+                    continue  # giữ ở trạng thái chờ duyệt để chủ studio xem
+                c.status, c.backup_path, c.applied_sha = "applied", res["backup"], res["applied_sha"]
+                c.decided_by, c.decided_at = "auto", utcnow()
+                audit(s, "auto", "change_auto_applied", "file_change", c.id, f"{p.name}: {c.path}")
+                applied += 1
+            audit(s, "auto", "changes_auto_proposed", "task", t.id, f"{len(proposals)} đề xuất, {applied} đã áp dụng, {len(errors)} lỗi")
+            s.commit()
+
     def _kick_dependents(self, task_id: int, actor: str) -> None:
         with self.sf() as s:
             t = s.get(Task, task_id)
@@ -195,6 +240,10 @@ class Orchestrator:
     def execute_run(self, task_id: int, chain: list[tuple[str, str]], actor: str) -> None:
         try:
             self._execute(task_id, chain, actor)
+            try:
+                self.auto_apply_changes(task_id)
+            except Exception:  # noqa: BLE001 - lỗi ghi file không được làm hỏng nhiệm vụ đã hoàn thành
+                pass
             self._kick_dependents(task_id, actor)
         except Exception as e:  # không để nhiệm vụ kẹt ở Running
             with self.sf() as s:
@@ -209,6 +258,10 @@ class Orchestrator:
             agent = s.get(Agent, t.agent_id) if t.agent_id else None
             system = agent.system_prompt if agent else ""
             prompt = build_prompt(t, upstream_results(s, t), lessons_svc.texts_and_mark_used(s, t.department_key, t.project_id))
+            proj = s.get(Project, t.project_id)
+            if proj and proj.allow_write and proj.auto_apply and proj.source_type == "folder" and t.department_key == "game_dev":
+                from .changes import FORMAT_HELP  # dự án bật tự áp dụng: yêu cầu AI trả sửa file đúng định dạng
+                prompt += "\n\n" + FORMAT_HELP
             last_error, first = "Không có lần gọi nào được thực hiện.", True
 
             for pname, model in chain:
