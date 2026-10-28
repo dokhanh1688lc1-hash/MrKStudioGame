@@ -193,8 +193,15 @@ export function Tasks({ role }: Role) {
   const depts = useLoad<any[]>("/departments");
   const [sel, setSel] = useState<number | null>(null);
   const detail = useLoad<any>(sel ? `/tasks/${sel}` : null, [tick]);
-  const blank = { project_id: "", department_key: "", title: "", objective: "", context: "", acceptance_criteria: "", provider: "", sensitive: false, requires_approval: false };
-  const [f, setF] = useState<any>(blank);
+  const blank = { project_id: "", departments: [] as string[], notes: {} as Record<string, string>, run_now: false, title: "", objective: "", context: "", acceptance_criteria: "", provider: "", sensitive: false, requires_approval: false };
+  const [f, setF] = useState<any>(() => {
+    try {  // Văn phòng studio chuyển danh sách phòng ban đã chọn sang đây
+      const raw = localStorage.getItem("mrk.preDepts");
+      localStorage.removeItem("mrk.preDepts");
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? { ...blank, departments: arr.filter((k: unknown) => typeof k === "string") } : blank;
+    } catch { return blank; }
+  });
   const [savedPath, setSavedPath] = useState("");
   const { run, busy, banner } = useAction();
   const refresh = () => setTick((t) => t + 1);
@@ -206,17 +213,43 @@ export function Tasks({ role }: Role) {
       {canEdit(role) && (
         <form className="card" onSubmit={async (e) => {
           e.preventDefault();
-          const body = { ...f, project_id: Number(f.project_id), provider: f.provider || null };
-          if (await run(() => api("/tasks", { method: "POST", body }), "Đã tạo nhiệm vụ.")) { setF(blank); refresh(); }
+          if (f.departments.length === 0) { alert("Chọn ít nhất một phòng ban."); return; }
+          const { departments, notes, run_now, ...rest } = f;
+          const common = { ...rest, project_id: Number(f.project_id), provider: f.provider || null };
+          const ok = await run(async () => {
+            if (departments.length === 1) {
+              const t = await api<any>("/tasks", { method: "POST", body: { ...common, department_key: departments[0], objective: notes[departments[0]]?.trim() ? `${f.objective}\n\nGhi chú riêng cho phòng ban này:\n${notes[departments[0]].trim()}` : f.objective } });
+              if (run_now) await api(`/tasks/${t.id}/run`, { method: "POST" });
+            } else {
+              const r = await api<any>("/tasks/bulk", { method: "POST", body: { ...common, department_keys: departments, notes: Object.fromEntries(Object.entries(notes).filter(([k, v]) => departments.includes(k) && String(v).trim())), run_now } });
+              const errs = Object.entries(r.run_errors || {});
+              if (errs.length) throw new Error(`Đã tạo ${r.task_ids.length} nhiệm vụ nhưng ${errs.length} nhiệm vụ chưa chạy được: ` + errs.map(([id, m]) => `#${id}: ${m}`).join("; "));
+            }
+          }, departments.length > 1 ? `Đã giao nhiệm vụ cho ${departments.length} phòng ban.` : "Đã tạo nhiệm vụ.");
+          if (ok) { setF(blank); refresh(); }
         }}>
           <b>Giao nhiệm vụ mới</b>
           <div className="row">
             <Field label="Dự án *"><select value={f.project_id} onChange={(e) => setF({ ...f, project_id: e.target.value })} required>
               <option value="">— chọn —</option>{projects.data?.items.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
-            <Field label="Phòng ban *"><select value={f.department_key} onChange={(e) => setF({ ...f, department_key: e.target.value })} required>
-              <option value="">— chọn —</option>{depts.data?.map((d) => <option key={d.key} value={d.key}>{d.name} (ưu tiên {d.preferred_provider})</option>)}</select></Field>
             <Field label="Provider (để trống = theo routing)"><select value={f.provider} onChange={(e) => setF({ ...f, provider: e.target.value })}>
               <option value="">Tự động theo routing</option><option value="claude_cli">Claude Code (trên máy)</option><option value="codex_cli">Codex / ChatGPT (trên máy)</option><option value="internal">Nội bộ (không gọi AI)</option></select></Field>
+          </div>
+          <div className="field">
+            <label>Phòng ban nhận việc * (chọn nhiều để giao cùng lúc — mỗi phòng ban nhận một nhiệm vụ riêng)</label>
+            <p className="row tight">
+              <button type="button" className="btn ghost" onClick={() => setF({ ...f, departments: depts.data?.map((d) => d.key) ?? [] })}>Chọn tất cả</button>
+              <button type="button" className="btn ghost" onClick={() => setF({ ...f, departments: [] })}>Bỏ chọn</button>
+              <span className="muted">Đã chọn: {f.departments.length}</span>
+            </p>
+            <div className="row tight" style={{ flexWrap: "wrap" }}>
+              {depts.data?.map((d) => (
+                <label key={d.key} style={{ margin: 0, minWidth: 220 }}>
+                  <input type="checkbox" style={{ width: "auto" }} checked={f.departments.includes(d.key)}
+                    onChange={(e) => setF({ ...f, departments: e.target.checked ? [...f.departments, d.key] : f.departments.filter((k: string) => k !== d.key) })} /> {d.name}
+                  <span className="muted"> ({d.preferred_provider === "openai" ? "ChatGPT" : "Claude"})</span>
+                </label>))}
+            </div>
           </div>
           <Field label="Tiêu đề *"><input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required /></Field>
           <Field label="Mục tiêu *"><textarea value={f.objective} onChange={(e) => setF({ ...f, objective: e.target.value })} required /></Field>
@@ -224,10 +257,20 @@ export function Tasks({ role }: Role) {
             <Field label="Bối cảnh / đầu vào"><textarea value={f.context} onChange={(e) => setF({ ...f, context: e.target.value })} /></Field>
             <Field label="Tiêu chí nghiệm thu"><textarea value={f.acceptance_criteria} onChange={(e) => setF({ ...f, acceptance_criteria: e.target.value })} /></Field>
           </div>
+          {f.departments.length > 0 && (
+            <details className="card">
+              <summary>Ghi chú riêng cho từng phòng ban (tùy chọn)</summary>
+              {f.departments.map((k: string) => (
+                <Field key={k} label={depts.data?.find((d) => d.key === k)?.name ?? k}>
+                  <textarea value={f.notes[k] ?? ""} onChange={(e) => setF({ ...f, notes: { ...f.notes, [k]: e.target.value } })} placeholder="Việc cụ thể phòng ban này cần làm…" />
+                </Field>))}
+            </details>
+          )}
           <p className="row tight">
+            <label style={{ margin: 0 }}><input type="checkbox" style={{ width: "auto" }} checked={f.run_now} onChange={(e) => setF({ ...f, run_now: e.target.checked })} /> Chạy AI ngay sau khi tạo (tính vào hạn mức gói; tối đa 2 nhiệm vụ chạy đồng thời)</label>
             <label style={{ margin: 0 }}><input type="checkbox" style={{ width: "auto" }} checked={f.sensitive} onChange={(e) => setF({ ...f, sensitive: e.target.checked })} /> Dữ liệu nhạy cảm (chỉ gửi provider được cấp quyền)</label>
             <label style={{ margin: 0 }}><input type="checkbox" style={{ width: "auto" }} checked={f.requires_approval} onChange={(e) => setF({ ...f, requires_approval: e.target.checked })} /> Cần phê duyệt trước khi chạy</label>
-            <button className="btn" disabled={busy}>Tạo nhiệm vụ</button>
+            <button className="btn" disabled={busy}>{f.departments.length > 1 ? `Giao cho ${f.departments.length} phòng ban` : "Tạo nhiệm vụ"}</button>
           </p>
         </form>
       )}

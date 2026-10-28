@@ -9,7 +9,7 @@
 | Routing, fallback có kiểm soát, chế độ nội bộ; **đã gỡ hoàn toàn API key/adapter OpenAI & Anthropic** (chỉ dùng CLI trên máy) | Implemented |
 | Giới hạn số lượt chạy AI (6 phạm vi × 3 kỳ) và usage; migration 0003 chuyển từ ngân sách USD | Implemented |
 | Approval Center, Emergency Stop | Implemented |
-| Dashboard tiếng Việt: 9/25 trang | Partially Implemented |
+| Dashboard tiếng Việt: 11 trang (kể cả Văn phòng studio) / 25 theo đặc tả | Partially Implemented |
 | Alembic migrations (baseline + stamp DB cũ + test không lệch model) | Implemented |
 | Đánh giá chéo 2 provider, giới hạn số lần gọi/phút | Not Implemented |
 | Sao lưu SQLite: thủ công + tự động (khởi động/24h, trước migrate), giữ 14 bản | Implemented (khôi phục vẫn thủ công, chưa kiểm thử PostgreSQL) |
@@ -20,7 +20,9 @@
 | Pipeline 12 bước liên phòng ban (Research → Concept → GDD → Feasibility → Art/Audio/Monetization → Prototype → QA → Compliance → Release prep → Marketing) | Implemented |
 | Truyền kết quả bước trước vào prompt bước sau | Implemented |
 | Cổng phê duyệt chủ studio (GDD, Prototype, Release prep) | Implemented |
-| Trang riêng cho từng phòng ban (Market Research, Art, Audio…) | Not Implemented |
+| Màn hình “Văn phòng studio”: 14 phòng ban dạng tranh minh họa, trạng thái trực tiếp, bấm phòng để xem việc/giao việc | Implemented |
+| Giao một nhiệm vụ cho nhiều phòng ban cùng lúc (ghi chú riêng từng phòng, tùy chọn chạy ngay) | Implemented |
+| Trang chuyên sâu riêng cho từng phòng ban (workflow riêng) | Not Implemented |
 | Sinh ảnh/âm thanh thật, build Godot, Telegram | Not Implemented |
 
 ### Dùng Claude/ChatGPT đã đăng nhập trên máy

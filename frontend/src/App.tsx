@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { api, getToken, setToken, useLoad } from "./api";
 import { Field, useAction } from "./ui";
+import { Office } from "./Office";
 import { Agents, Approvals, Budgets, Dashboard, Logs, Pipeline, Projects, Providers, Settings, Tasks } from "./pages";
 
 const PAGES: [string, string][] = [
-  ["dashboard", "CEO Dashboard"], ["projects", "Dự án"], ["pipeline", "Pipeline sản xuất"], ["tasks", "Task Center"], ["agents", "Phòng ban & Agent"],
+  ["office", "Văn phòng studio"], ["dashboard", "CEO Dashboard"], ["projects", "Dự án"], ["pipeline", "Pipeline sản xuất"], ["tasks", "Task Center"], ["agents", "Phòng ban & Agent"],
   ["providers", "AI Provider & Routing"], ["approvals", "Approval Center"], ["budgets", "Giới hạn lượt chạy"],
   ["logs", "Activity Logs"], ["settings", "Cài đặt & Bảo mật"],
 ];
-const SOON = ["Market Research", "Product & Game Design", "Art Studio", "Audio Studio", "Game Development", "QA & Testing",
-  "Monetization", "Marketing", "Data & Analytics", "DevOps & Release", "IP & Compliance", "Telegram & Operations", "Asset Library"];
+const SOON = ["Asset Library", "Telegram"];
 
 function Login({ onDone }: { onDone: () => void }) {
   const [u, setU] = useState("owner");
@@ -31,7 +31,7 @@ function Login({ onDone }: { onDone: () => void }) {
 
 export default function App() {
   const [authed, setAuthed] = useState(!!getToken());
-  const [page, setPage] = useState(() => location.hash.slice(1) || "dashboard");
+  const [page, setPage] = useState(() => location.hash.slice(1) || "office");
   useEffect(() => { location.hash = page; }, [page]);
   const me = useLoad<{ username: string; role: string }>(authed ? "/auth/me" : null);
   const state = useLoad<{ emergency_stop: boolean }>(authed ? "/system/state" : null, [page]);
@@ -55,6 +55,7 @@ export default function App() {
       </nav>
       <main>
         {state.data?.emergency_stop && <div className="stop">⛔ EMERGENCY STOP đang bật — mọi nhiệm vụ mới bị chặn. Tắt trong “Cài đặt & Bảo mật”.</div>}
+        {page === "office" && <Office role={role} go={go} />}
         {page === "dashboard" && <Dashboard go={go} />}
         {page === "projects" && <Projects role={role} />}
         {page === "pipeline" && <Pipeline role={role} />}

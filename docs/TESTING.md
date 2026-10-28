@@ -3,7 +3,7 @@
 ```
 cd backend && python -m pytest -q
 ```
-64 test, không gọi mạng thật: Claude Code và Codex được giả lập bằng hai chương trình giả (`tests/conftest.py`, `tests/test_cli_providers.py`).
+70 test, không gọi mạng thật: Claude Code và Codex được giả lập bằng hai chương trình giả (`tests/conftest.py`, `tests/test_cli_providers.py`).
 Bao phủ: đăng nhập/giới hạn thử sai/token giả, phân quyền theo vai trò, CRUD dự án + workspace, seed 14 phòng ban,
 routing + fallback + dữ liệu nhạy cảm, nhiệm vụ cũ lưu provider API được ánh xạ, chế độ nội bộ, retry có giới hạn, lỗi không retry,
 timeout, giới hạn lượt chạy (chặn, đếm lượt thật, tỉ lệ, xác thực), phê duyệt (duyệt/từ chối/không tạo trùng),

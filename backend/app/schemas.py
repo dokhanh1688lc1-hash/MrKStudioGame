@@ -107,6 +107,28 @@ class TaskIn(BaseModel):
     depends_on: list[int] = []
 
 
+class BulkTaskIn(BaseModel):
+    """Giao cùng một nhiệm vụ cho nhiều phòng ban một lúc (mỗi phòng ban nhận một nhiệm vụ riêng)."""
+    project_id: int
+    department_keys: list[str] = Field(min_length=1, max_length=20)
+    title: str = Field(min_length=1, max_length=200)
+    objective: str = Field(min_length=1)
+    context: str = ""
+    constraints: str = ""
+    expected_output: str = ""
+    acceptance_criteria: str = ""
+    # Ghi chú riêng cho từng phòng ban (key phòng ban → nội dung), nối vào cuối mục tiêu
+    notes: dict[str, str] = {}
+    provider: ProviderName | None = None
+    model: str | None = None
+    sensitive: bool = False
+    max_output_tokens: int = Field(default=1024, ge=16, le=32000)
+    timeout_s: int = Field(default=60, ge=1, le=600)
+    max_retries: int = Field(default=1, ge=0, le=3)
+    requires_approval: bool = False
+    run_now: bool = False
+
+
 class AttemptOut(ORM):
     id: int
     provider: str

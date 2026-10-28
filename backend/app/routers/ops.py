@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..db import utcnow
 from ..deps import Principal, current_user, get_db, require
-from ..models import (Approval, AuditLog, Budget, Project, ProviderConfig, Task, UsageRecord)
+from ..models import (Agent, Approval, AuditLog, Budget, Department, Project, ProviderConfig, Task, UsageRecord)
 from ..schemas import (ApprovalIn, ApprovalOut, AuditOut, BudgetIn, BudgetOut, DecisionIn, ProviderOut,
                        ProviderPatch, SettingsPatch, StopIn, UsageOut)
 from ..services.budget import spent
@@ -214,6 +214,28 @@ def dashboard(request: Request, _: Principal = Depends(current_user), s: Session
                        "last_check_status": p.last_check_status} for p in provs],
         "system": _system_state(s),
     }
+
+
+@router.get("/office")
+def office(_: Principal = Depends(current_user), s: Session = Depends(get_db)):
+    """Trạng thái từng phòng ban cho màn hình 'Văn phòng studio' (cập nhật theo thời gian thực)."""
+    counts: dict[str, dict[str, int]] = {}
+    for dk, st, n in s.execute(select(Task.department_key, Task.status, func.count()).group_by(Task.department_key, Task.status)):
+        counts.setdefault(dk, {})[st] = n
+    running = {}
+    for t in s.scalars(select(Task).where(Task.status == "Running").order_by(Task.id)):
+        running.setdefault(t.department_key, t.title)
+    out = []
+    for d in s.scalars(select(Department).order_by(Department.id)):
+        c = counts.get(d.key, {})
+        agents = s.scalar(select(func.count()).select_from(Agent).where(Agent.department_id == d.id, Agent.enabled.is_(True))) or 0
+        out.append({"key": d.key, "name": d.name, "description": d.description, "family": d.preferred_provider,
+                    "agents": agents, "running_title": running.get(d.key, ""),
+                    "running": c.get("Running", 0),
+                    "waiting": c.get("Awaiting Approval", 0) + c.get("Blocked", 0),
+                    "queued": c.get("Assigned", 0) + c.get("Planned", 0) + c.get("Pending", 0),
+                    "done": c.get("Completed", 0), "failed": c.get("Failed", 0)})
+    return out
 
 
 @router.get("/system/backups")

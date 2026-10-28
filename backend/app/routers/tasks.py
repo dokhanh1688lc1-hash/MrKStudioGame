@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..deps import Principal, current_user, get_db, require
 from ..models import Agent, Department, Project, Task, TaskDependency
-from ..schemas import TaskDetail, TaskIn, TaskOut
+from ..schemas import BulkTaskIn, TaskDetail, TaskIn, TaskOut
 from ..services.common import EngineError, audit, slugify
 from ..services.pipeline import TEMPLATE, create_pipeline, pipeline_tasks
 
@@ -64,6 +64,56 @@ def create_task(body: TaskIn, user: Principal = Depends(require("manager")), s: 
     audit(s, user.username, "task_created", "task", t.id, t.title)
     s.commit()
     return _detail(s, t)
+
+
+@router.post("/bulk", status_code=201)
+def create_bulk(body: BulkTaskIn, request: Request, user: Principal = Depends(require("manager")),
+                s: Session = Depends(get_db)):
+    """Tạo mỗi phòng ban một nhiệm vụ. Kiểm tra tất cả trước; có lỗi thì không tạo gì (tất cả hoặc không)."""
+    p = s.get(Project, body.project_id)
+    if not p:
+        raise HTTPException(404, "Không tìm thấy dự án.")
+    if p.status == "Archived":
+        raise HTTPException(409, "Dự án đã lưu trữ (Archived).")
+    keys = list(dict.fromkeys(body.department_keys))  # bỏ trùng, giữ thứ tự
+    unknown = [k for k in body.notes if k not in keys]
+    if unknown:
+        raise HTTPException(422, f"Ghi chú cho phòng ban không nằm trong danh sách chọn: {unknown}")
+    agents: dict[str, Agent] = {}
+    for k in keys:
+        dept = s.scalar(select(Department).where(Department.key == k))
+        if not dept:
+            raise HTTPException(422, f"Phòng ban không tồn tại: {k}")
+        agent = s.scalar(select(Agent).where(Agent.department_id == dept.id, Agent.enabled.is_(True)).order_by(Agent.id))
+        if not agent:
+            raise HTTPException(409, f"Phòng ban '{dept.name}' chưa có agent nào được bật.")
+        agents[k] = agent
+    base = body.model_dump(exclude={"department_keys", "notes", "run_now"})
+    created: list[Task] = []
+    for k in keys:
+        data = dict(base)
+        if body.notes.get(k, "").strip():
+            data["objective"] = f"{body.objective}\n\nGhi chú riêng cho phòng ban này:\n{body.notes[k].strip()}"
+        t = Task(**data, department_key=k, agent_id=agents[k].id, status="Assigned")
+        s.add(t)
+        created.append(t)
+    s.flush()
+    audit(s, user.username, "tasks_bulk_created", "project", p.id, f"{len(created)} nhiệm vụ: {', '.join(keys)}")
+    for t in created:
+        audit(s, user.username, "task_created", "task", t.id, t.title)
+    s.commit()
+    ids = [t.id for t in created]
+    started, errors = [], {}
+    if body.run_now:
+        orch = request.app.state.orch
+        for tid in ids:
+            try:
+                chain = orch.prepare_run(tid, user.username)
+                orch.run_async(tid, chain, user.username)
+                started.append(tid)
+            except EngineError as e:
+                errors[tid] = e.message
+    return {"task_ids": ids, "started": started, "run_errors": errors}
 
 
 @router.get("/{tid}", response_model=TaskDetail)
