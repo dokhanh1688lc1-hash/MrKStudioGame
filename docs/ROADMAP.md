@@ -23,6 +23,14 @@
 | Trang riêng cho từng phòng ban (Market Research, Art, Audio…) | Not Implemented |
 | Sinh ảnh/âm thanh thật, build Godot, Telegram | Not Implemented |
 
+### Dùng Claude/ChatGPT đã đăng nhập trên máy
+| Hạng mục | Trạng thái |
+|---|---|
+| Provider `claude_cli` (Claude Code), kiểm thử với `claude` thật | Implemented |
+| Provider `codex_cli` (Codex CLI) | Implemented — chưa chạy nhiệm vụ thật (cần đăng nhập ChatGPT trên máy) |
+| Điều khiển ứng dụng desktop ChatGPT/Claude | Not Implemented (không có giao diện hỗ trợ; tự động hóa giao diện dễ hỏng và có thể vi phạm điều khoản) |
+| Theo dõi hạn mức/chi phí gói thuê bao | Not Implemented |
+
 ### Dự án cũ: sửa, tải lên, nâng cấp
 | Hạng mục | Trạng thái |
 |---|---|

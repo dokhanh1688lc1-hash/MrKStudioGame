@@ -18,8 +18,8 @@ def estimate_tokens(text: str) -> int:
 
 
 def compute_cost(cfg: ProviderConfig, in_tok: int | None, out_tok: int | None) -> float | None:
-    if cfg.name == "internal":
-        return 0.0
+    if cfg.name == "internal" or cfg.name.endswith("_cli"):
+        return 0.0  # nội bộ / gói thuê bao CLI: không tính tiền theo token
     if cfg.price_in_per_mtok is None or cfg.price_out_per_mtok is None or in_tok is None or out_tok is None:
         return None
     return (in_tok * cfg.price_in_per_mtok + out_tok * cfg.price_out_per_mtok) / 1_000_000

@@ -3,6 +3,7 @@ from __future__ import annotations
 from ..config import Settings
 from .base import Provider
 from .http_providers import AnthropicAdapter, OpenAIAdapter
+from .cli_providers import ClaudeCli, CodexCli
 from .internal import InternalProvider
 
 
@@ -13,6 +14,8 @@ class ProviderRegistry:
             "openai": OpenAIAdapter(settings.openai_api_key, settings.openai_base_url, t.get("openai")),
             "anthropic": AnthropicAdapter(settings.anthropic_api_key, settings.anthropic_base_url,
                                           t.get("anthropic")),
+            "claude_cli": ClaudeCli(settings.data_dir / "cli-scratch"),
+            "codex_cli": CodexCli(settings.data_dir / "cli-scratch"),
             "internal": InternalProvider(),
         }
 

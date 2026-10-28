@@ -56,9 +56,10 @@ def plan_route(s: Session, registry: ProviderRegistry, *, department_key: str, p
         c, p = cfgs.get(name), registry.get(name)
         if c is None or not c.enabled:
             return False, f"provider '{name}' đang tắt"
+        sub_cli = getattr(p, "subscription", False)
         if not p.configured():
-            return False, f"provider '{name}' chưa có API key"
-        if not (model or c.default_model):
+            return False, f"provider '{name}' " + ("chưa cài/không tìm thấy chương trình" if sub_cli else "chưa có API key")
+        if not sub_cli and not (model or c.default_model):
             return False, f"provider '{name}' chưa cấu hình model"
         if sensitive and not c.allow_sensitive:
             return False, f"provider '{name}' chưa được cấp quyền nhận dữ liệu nhạy cảm"
@@ -79,14 +80,19 @@ def plan_route(s: Session, registry: ProviderRegistry, *, department_key: str, p
 
     dept = s.scalar(select(Department).where(Department.key == department_key))
     pref = dept.preferred_provider if dept else "openai"
-    order = [pref] + [n for n in ("openai", "anthropic") if n != pref]
+    other = "anthropic" if pref == "openai" else "openai"
+    fam = {"openai": ["openai", "codex_cli"], "anthropic": ["anthropic", "claude_cli"]}
+    prefer_cli = get_bool(s, "prefer_cli")
+    order = []
+    for f in (pref, other):
+        order += fam[f][::-1] if prefer_cli else fam[f]
     good = [n for n in order if n in cfgs and usable(n)[0]]
     if not good:
         return [("internal", "internal")], "không có provider AI khả dụng → chế độ nội bộ (không gọi AI)"
     chain = [(n, model_of(n) or cfgs[n].default_model) for n in good]
     if not get_bool(s, "fallback_enabled"):
         chain = chain[:1]
-    reason = f"phòng ban ưu tiên {pref}" + ("" if good[0] == pref else f"; {pref} không khả dụng nên dùng {good[0]}")
+    reason = f"phòng ban ưu tiên {pref}" + ("" if good[0] in fam[pref] else f"; {pref} không khả dụng nên dùng {good[0]}")
     return chain, reason
 
 
@@ -206,7 +212,8 @@ class Orchestrator:
                     s.commit()
                     try:
                         res = prov.complete(system=system, prompt=prompt, model=model,
-                                            max_tokens=t.max_output_tokens, timeout=t.timeout_s)
+                                            max_tokens=t.max_output_tokens,
+                                            timeout=max(t.timeout_s, 180) if getattr(prov, "subscription", False) else t.timeout_s)
                     except ProviderError as e:
                         att.status, att.error, att.finished_at = "error", str(e), utcnow()
                         last_error = f"{pname}: {e}"

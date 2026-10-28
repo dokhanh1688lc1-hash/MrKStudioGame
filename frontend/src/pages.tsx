@@ -219,7 +219,7 @@ export function Tasks({ role }: Role) {
             <Field label="Phòng ban *"><select value={f.department_key} onChange={(e) => setF({ ...f, department_key: e.target.value })} required>
               <option value="">— chọn —</option>{depts.data?.map((d) => <option key={d.key} value={d.key}>{d.name} (ưu tiên {d.preferred_provider})</option>)}</select></Field>
             <Field label="Provider (để trống = theo routing)"><select value={f.provider} onChange={(e) => setF({ ...f, provider: e.target.value })}>
-              <option value="">Tự động theo routing</option><option>openai</option><option>anthropic</option><option>internal</option></select></Field>
+              <option value="">Tự động theo routing</option><option>openai</option><option>anthropic</option><option>claude_cli</option><option>codex_cli</option><option>internal</option></select></Field>
           </div>
           <Field label="Tiêu đề *"><input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required /></Field>
           <Field label="Mục tiêu *"><textarea value={f.objective} onChange={(e) => setF({ ...f, objective: e.target.value })} required /></Field>
@@ -337,15 +337,16 @@ export function Providers({ role }: Role) {
           return (
             <div className="card" key={p.name}>
               <div className="row tight"><b style={{ fontSize: 17 }}>{p.name}</b>
-                <span>{p.configured ? `Khóa: ${p.masked_key || "(nội bộ)"}` : "Chưa có API key"}</span>
+                <span>{p.kind === "cli" ? (p.configured ? `Chương trình: ${p.masked_key}` : "Chưa tìm thấy chương trình trên máy") : p.configured ? `Khóa: ${p.masked_key || "(nội bộ)"}` : "Chưa có API key"}</span>
                 <Badge v={p.last_check_status} /><span className="muted">{p.last_check_message} {p.last_check_at && `(${utc(p.last_check_at)})`}</span></div>
               {p.name !== "internal" && role === "owner" && (
                 <div className="row">
-                  <Field label="Model ID mặc định"><input value={val("default_model")} onChange={(ev) => set("default_model", ev.target.value)} /></Field>
-                  <Field label="Giá input (USD / 1 triệu token)"><input type="number" step="any" min="0" value={val("price_in_per_mtok")} onChange={(ev) => set("price_in_per_mtok", ev.target.value === "" ? null : Number(ev.target.value))} /></Field>
-                  <Field label="Giá output (USD / 1 triệu token)"><input type="number" step="any" min="0" value={val("price_out_per_mtok")} onChange={(ev) => set("price_out_per_mtok", ev.target.value === "" ? null : Number(ev.target.value))} /></Field>
+                  <Field label={p.kind === "cli" ? "Model (để trống = mặc định của chương trình)" : "Model ID mặc định"}><input value={val("default_model")} onChange={(ev) => set("default_model", ev.target.value)} /></Field>
+                  {p.kind === "api" && <><Field label="Giá input (USD / 1 triệu token)"><input type="number" step="any" min="0" value={val("price_in_per_mtok")} onChange={(ev) => set("price_in_per_mtok", ev.target.value === "" ? null : Number(ev.target.value))} /></Field>
+                  <Field label="Giá output (USD / 1 triệu token)"><input type="number" step="any" min="0" value={val("price_out_per_mtok")} onChange={(ev) => set("price_out_per_mtok", ev.target.value === "" ? null : Number(ev.target.value))} /></Field></>}
                 </div>
               )}
+              {p.kind === "cli" && <p className="muted">Dùng tài khoản {p.name === "claude_cli" ? "Claude" : "ChatGPT"} đã đăng nhập sẵn trên máy qua chương trình dòng lệnh (không cần API key). Tính vào hạn mức gói thuê bao của bạn, không tính tiền theo token, nên hệ thống không theo dõi chi phí USD cho provider này. Chạy chậm hơn API; chỉ trả về văn bản, không sửa tệp. Mặc định TẮT: bấm “Kiểm tra kết nối” rồi bật.</p>}
               <p className="row tight">
                 {role === "owner" && <>
                   <label style={{ margin: 0 }}><input type="checkbox" style={{ width: "auto" }} checked={p.enabled} onChange={(ev) => run(() => api(`/providers/${p.name}`, { method: "PATCH", body: { enabled: ev.target.checked } }), "Đã cập nhật.").then(ps.reload)} /> Bật</label>
@@ -495,6 +496,8 @@ export function Settings({ role }: Role) {
             <b>Chính sách</b>
             <p><label style={{ margin: 0 }}><input type="checkbox" style={{ width: "auto" }} disabled={role !== "owner"} checked={st.data.fallback_enabled}
               onChange={(e) => run(() => api("/system/settings", { method: "PATCH", body: { fallback_enabled: e.target.checked } }), "Đã cập nhật.").then(st.reload)} /> Cho phép tự chuyển sang provider khác khi provider chính lỗi</label></p>
+            <p><label style={{ margin: 0 }}><input type="checkbox" style={{ width: "auto" }} disabled={role !== "owner"} checked={st.data.prefer_cli}
+              onChange={(e) => run(() => api("/system/settings", { method: "PATCH", body: { prefer_cli: e.target.checked } }), "Đã cập nhật.").then(st.reload)} /> Ưu tiên dùng Claude Code / Codex đã đăng nhập trên máy (gói thuê bao) trước API khi cùng nhà cung cấp</label></p>
             <div className="row tight">
               <Field label={`Ngưỡng chi phí ước tính cần phê duyệt (USD) — hiện: ${st.data.approval_cost_threshold_usd}`}><input type="number" step="any" min="0" value={thr} disabled={role !== "owner"} onChange={(e) => setThr(e.target.value)} /></Field>
               {role === "owner" && <button className="btn" disabled={busy || thr === ""} onClick={() => run(() => api("/system/settings", { method: "PATCH", body: { approval_cost_threshold_usd: Number(thr) } }), "Đã lưu ngưỡng.").then(() => { setThr(""); st.reload(); })}>Lưu</button>}

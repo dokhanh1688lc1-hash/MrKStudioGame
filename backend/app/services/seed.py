@@ -49,9 +49,12 @@ def seed_all(s: Session, settings: Settings) -> str | None:
                         system_prompt=f"{BASE_RULES}\nVai trò: {name}. Phạm vi: {desc}"))
 
     for name, model in (("openai", settings.openai_default_model),
-                        ("anthropic", settings.anthropic_default_model), ("internal", "internal")):
+                        ("anthropic", settings.anthropic_default_model), ("claude_cli", ""), ("codex_cli", ""),
+                        ("internal", "internal")):
         if not s.scalar(select(ProviderConfig).where(ProviderConfig.name == name)):
-            s.add(ProviderConfig(name=name, default_model=model, allow_sensitive=(name == "internal")))
+            # CLI thuê bao: mặc định TẮT (người dùng tự bật sau khi kiểm tra kết nối)
+            s.add(ProviderConfig(name=name, default_model=model, allow_sensitive=(name == "internal"),
+                                 enabled=not name.endswith("_cli")))
 
     generated = None
     if not s.scalar(select(User).limit(1)):

@@ -24,7 +24,12 @@ Linux/macOS: `cp .env.example .env`, `pip install -r backend/requirements.txt`, 
 Chế độ nội bộ quản lý dự án/nhiệm vụ/ngân sách/phê duyệt mà không gọi AI. Nhiệm vụ chạy ở chế độ này chỉ dựng
 **khung công việc** và được gắn nhãn rõ “không phải kết quả AI”.
 
-## Cấu hình OpenAI / Anthropic
+## Dùng Claude / ChatGPT đã cài sẵn trên máy (không cần API key)
+1. Cài và đăng nhập: Claude Code (lệnh `claude`) và/hoặc Codex CLI (`npm i -g @openai/codex`, rồi `codex login` → Sign in with ChatGPT).
+2. Mở **AI Provider & Routing** → ở `claude_cli` / `codex_cli` bấm **Kiểm tra kết nối** → khi hiện `ok` thì tick **Bật**.
+3. Các phòng ban tự dùng chúng theo họ nhà cung cấp (xem [docs/AI_ROUTING.md](docs/AI_ROUTING.md)). Dùng gói thuê bao nên không tính USD theo token. Ứng dụng desktop ChatGPT/Claude không điều khiển được; chỉ hai công cụ dòng lệnh này.
+
+## Cấu hình OpenAI / Anthropic (API key)
 1. Mở `.env`, điền `OPENAI_API_KEY` và/hoặc `ANTHROPIC_API_KEY` (khóa thật, không commit `.env`). Khởi động lại.
 2. Vào **AI Provider & Routing**: nhập **Model ID** (bạn tự chọn, hệ thống không hardcode) và **giá** (USD/1 triệu token) rồi *Lưu cấu hình*.
 3. Bấm **Kiểm tra kết nối** (gọi `GET /v1/models`, không tốn token). Chỉ khi hiện `ok` mới coi là đã kết nối.

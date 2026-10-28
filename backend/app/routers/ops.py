@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api", tags=["ops"])
 # ---------- providers ----------
 def _prov_out(request: Request, c: ProviderConfig) -> ProviderOut:
     p = request.app.state.registry.get(c.name)
-    return ProviderOut(name=c.name, enabled=c.enabled, configured=p.configured(), masked_key=p.masked_key(),
+    return ProviderOut(name=c.name, kind="cli" if c.name.endswith("_cli") else ("internal" if c.name == "internal" else "api"), enabled=c.enabled, configured=p.configured(), masked_key=p.masked_key(),
                        default_model=c.default_model, price_in_per_mtok=c.price_in_per_mtok,
                        price_out_per_mtok=c.price_out_per_mtok, allow_sensitive=c.allow_sensitive,
                        last_check_status=c.last_check_status, last_check_message=c.last_check_message,
@@ -172,7 +172,7 @@ def audit_logs(action: str = "", limit: int = Query(50, ge=1, le=200), offset: i
 
 
 def _system_state(s: Session) -> dict:
-    return {"emergency_stop": get_bool(s, "emergency_stop"), "fallback_enabled": get_bool(s, "fallback_enabled"),
+    return {"emergency_stop": get_bool(s, "emergency_stop"), "fallback_enabled": get_bool(s, "fallback_enabled"), "prefer_cli": get_bool(s, "prefer_cli"),
             "approval_cost_threshold_usd": float(get_setting(s, "approval_cost_threshold_usd"))}
 
 
@@ -194,6 +194,8 @@ def patch_settings(body: SettingsPatch, user: Principal = Depends(require("owner
     d = body.model_dump(exclude_unset=True)
     if "fallback_enabled" in d and d["fallback_enabled"] is not None:
         set_setting(s, "fallback_enabled", "1" if d["fallback_enabled"] else "0")
+    if "prefer_cli" in d and d["prefer_cli"] is not None:
+        set_setting(s, "prefer_cli", "1" if d["prefer_cli"] else "0")
     if "approval_cost_threshold_usd" in d and d["approval_cost_threshold_usd"] is not None:
         set_setting(s, "approval_cost_threshold_usd", str(d["approval_cost_threshold_usd"]))
     audit(s, user.username, "settings_changed", "system", "", ", ".join(d))

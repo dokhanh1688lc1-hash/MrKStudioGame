@@ -12,6 +12,14 @@
 
 Giới hạn đã biết: token không thu hồi được trước hạn; chưa có HTTPS (chạy localhost; đặt sau reverse proxy nếu mở ra mạng); chưa có 2FA; kết quả AI hiển thị dạng text thuần.
 
+## Provider CLI (Claude Code / Codex)
+- Chạy bằng danh sách tham số, không qua shell; prompt và system prompt đi qua stdin (không nằm trong dòng lệnh); tên model được kiểm tra regex.
+- Chạy trong thư mục rỗng `data/cli-scratch`; Claude: `--tools=` (tắt công cụ) + `--permission-mode dontAsk`; Codex: `--sandbox read-only`. Mô hình chỉ trả văn bản, không sửa tệp.
+- Xóa `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` khỏi môi trường tiến trình con để CLI không âm thầm chuyển sang tính tiền API.
+- Timeout cứng và diệt cả cây tiến trình; tối đa 2 tiến trình CLI cùng lúc.
+- Nội dung nhiệm vụ vẫn được gửi tới nhà cung cấp qua đăng nhập của bạn: áp dụng cờ “nhạy cảm/allow_sensitive” như API.
+- Không thể tự xác minh trước chính sách sử dụng của gói thuê bao đối với việc chạy tự động; hãy tự kiểm tra điều khoản gói bạn đang dùng.
+
 ## Tải mã nguồn lên
 - Chống zip-slip (từ chối đường dẫn tuyệt đối, `..`, ổ đĩa), bỏ symlink, kiểm tra kích thước khai báo.
 - Giới hạn: 100 MB mỗi lần tải, 5000 tệp, 300 MB sau giải nén. Lỗi giữa chừng → xóa sạch thư mục nhập dở.
