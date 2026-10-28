@@ -4,6 +4,8 @@ Revision ID: 0009
 Revises: 0008
 """
 from alembic import op
+import importlib.util as _u, pathlib as _p
+_spec=_u.spec_from_file_location('safe_helpers', _p.Path(__file__).resolve().parents[1] / 'safe_helpers.py'); _safe=_u.module_from_spec(_spec); _spec.loader.exec_module(_safe)
 import sqlalchemy as sa
 import app.db
 
@@ -15,7 +17,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table('analytics_reports',
+    _safe.create_table('analytics_reports',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('project_id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(length=200), nullable=False),
@@ -31,8 +33,8 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_analytics_reports_project_id'), 'analytics_reports', ['project_id'], unique=False)
-    op.create_table('checklist_states',
+    _safe.create_index('ix_analytics_reports_project_id', 'analytics_reports', ['project_id'], unique=False)
+    _safe.create_table('checklist_states',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('project_id', sa.Integer(), nullable=False),
     sa.Column('key', sa.String(length=40), nullable=False),
@@ -44,8 +46,8 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('project_id', 'key', name='uq_checklist')
     )
-    op.create_index(op.f('ix_checklist_states_project_id'), 'checklist_states', ['project_id'], unique=False)
-    op.create_table('finance_records',
+    _safe.create_index('ix_checklist_states_project_id', 'checklist_states', ['project_id'], unique=False)
+    _safe.create_table('finance_records',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('project_id', sa.Integer(), nullable=True),
     sa.Column('kind', sa.String(length=8), nullable=False),
@@ -65,8 +67,8 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_finance_records_project_id'), 'finance_records', ['project_id'], unique=False)
-    op.create_table('game_builds',
+    _safe.create_index('ix_finance_records_project_id', 'finance_records', ['project_id'], unique=False)
+    _safe.create_table('game_builds',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('project_id', sa.Integer(), nullable=False),
     sa.Column('version', sa.String(length=40), nullable=False),
@@ -84,8 +86,8 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('project_id', 'version', 'platform', name='uq_build')
     )
-    op.create_index(op.f('ix_game_builds_project_id'), 'game_builds', ['project_id'], unique=False)
-    op.create_table('test_cases',
+    _safe.create_index('ix_game_builds_project_id', 'game_builds', ['project_id'], unique=False)
+    _safe.create_table('test_cases',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('project_id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(length=200), nullable=False),
@@ -101,8 +103,8 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_test_cases_project_id'), 'test_cases', ['project_id'], unique=False)
-    op.create_table('test_runs',
+    _safe.create_index('ix_test_cases_project_id', 'test_cases', ['project_id'], unique=False)
+    _safe.create_table('test_runs',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('test_case_id', sa.Integer(), nullable=False),
     sa.Column('status', sa.String(length=10), nullable=False),
@@ -117,8 +119,8 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['test_case_id'], ['test_cases.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_test_runs_test_case_id'), 'test_runs', ['test_case_id'], unique=False)
-    op.create_table('project_documents',
+    _safe.create_index('ix_test_runs_test_case_id', 'test_runs', ['test_case_id'], unique=False)
+    _safe.create_table('project_documents',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('project_id', sa.Integer(), nullable=False),
     sa.Column('kind', sa.String(length=20), nullable=False),
@@ -137,7 +139,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('project_id', 'title', 'version', name='uq_doc_version')
     )
-    op.create_index(op.f('ix_project_documents_project_id'), 'project_documents', ['project_id'], unique=False)
+    _safe.create_index('ix_project_documents_project_id', 'project_documents', ['project_id'], unique=False)
 
 
 def downgrade() -> None:

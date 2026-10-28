@@ -4,6 +4,8 @@ Revision ID: 0007
 Revises: 0006
 """
 from alembic import op
+import importlib.util as _u, pathlib as _p
+_spec=_u.spec_from_file_location('safe_helpers', _p.Path(__file__).resolve().parents[1] / 'safe_helpers.py'); _safe=_u.module_from_spec(_spec); _spec.loader.exec_module(_safe)
 import sqlalchemy as sa
 import app.db
 
@@ -15,7 +17,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
+    _safe.create_table(
         'assets',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('project_id', sa.Integer(), nullable=False),
@@ -38,8 +40,8 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['project_id'], ['projects.id']),
         sa.PrimaryKeyConstraint('id'),
     )
-    op.create_index('ix_assets_project_id', 'assets', ['project_id'])
-    op.create_index('ix_assets_status', 'assets', ['status'])
+    _safe.create_index('ix_assets_project_id', 'assets', ['project_id'])
+    _safe.create_index('ix_assets_status', 'assets', ['status'])
 
 
 def downgrade() -> None:

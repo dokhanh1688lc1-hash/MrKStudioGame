@@ -4,6 +4,8 @@ Revision ID: 0005
 Revises: 0004
 """
 from alembic import op
+import importlib.util as _u, pathlib as _p
+_spec=_u.spec_from_file_location('safe_helpers', _p.Path(__file__).resolve().parents[1] / 'safe_helpers.py'); _safe=_u.module_from_spec(_spec); _spec.loader.exec_module(_safe)
 import sqlalchemy as sa
 import app.db
 
@@ -15,7 +17,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
+    _safe.create_table(
         'file_changes',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('project_id', sa.Integer(), nullable=False),
@@ -36,10 +38,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['task_id'], ['tasks.id']),
         sa.PrimaryKeyConstraint('id'),
     )
-    op.create_index('ix_file_changes_project_id', 'file_changes', ['project_id'])
-    op.create_index('ix_file_changes_status', 'file_changes', ['status'])
-    with op.batch_alter_table('projects', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('allow_write', sa.Boolean(), nullable=False, server_default=sa.false()))
+    _safe.create_index('ix_file_changes_project_id', 'file_changes', ['project_id'])
+    _safe.create_index('ix_file_changes_status', 'file_changes', ['status'])
+    _safe.add_columns('projects', sa.Column('allow_write', sa.Boolean(), nullable=False, server_default=sa.false()))
 
 
 def downgrade() -> None:

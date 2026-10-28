@@ -14,6 +14,10 @@ depends_on = None
 
 
 def upgrade() -> None:
+    from importlib import util as _u; import pathlib as _p
+    _sp=_u.spec_from_file_location('safe_helpers', _p.Path(__file__).resolve().parents[1] / 'safe_helpers.py'); _s=_u.module_from_spec(_sp); _sp.loader.exec_module(_s)
+    if _s.has_column('budgets', 'limit_runs'):
+        return  # DB đã có lược đồ mới (tạo bằng create_all)
     with op.batch_alter_table('budgets', schema=None) as batch_op:
         batch_op.drop_constraint('ck_budget_limit', type_='check')
         batch_op.add_column(sa.Column('limit_runs', sa.Integer(), nullable=True))
