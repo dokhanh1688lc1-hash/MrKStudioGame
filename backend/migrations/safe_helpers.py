@@ -35,10 +35,8 @@ def create_index(name, table, cols, unique=False):
 
 def add_columns(table, *cols):
     todo = [c for c in cols if not has_column(table, c.name)]
-    if todo:
-        with op.batch_alter_table(table, schema=None) as b:
-            for c in todo:
-                b.add_column(c)
+    for c in todo:  # ALTER TABLE ADD COLUMN thuần: không tạo lại bảng (tránh lỗi khóa ngoại)
+        op.add_column(table, c)
 
 
 def drop_columns(table, *names):

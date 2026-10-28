@@ -40,7 +40,7 @@ def upgrade() -> None:
     )
     _safe.create_index('ix_file_changes_project_id', 'file_changes', ['project_id'])
     _safe.create_index('ix_file_changes_status', 'file_changes', ['status'])
-    _safe.add_columns('projects', sa.Column('allow_write', sa.Boolean(), nullable=False, server_default=sa.false()))
+    _safe.add_columns('projects', sa.Column('allow_write', sa.Boolean(), nullable=False, server_default=sa.text('0')))
 
 
 def downgrade() -> None:
