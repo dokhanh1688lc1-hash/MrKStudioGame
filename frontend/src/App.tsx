@@ -5,7 +5,7 @@ import { Agents, Approvals, Budgets, Dashboard, Logs, Pipeline, Projects, Provid
 
 const PAGES: [string, string][] = [
   ["dashboard", "CEO Dashboard"], ["projects", "Dự án"], ["pipeline", "Pipeline sản xuất"], ["tasks", "Task Center"], ["agents", "Phòng ban & Agent"],
-  ["providers", "AI Provider & Routing"], ["approvals", "Approval Center"], ["budgets", "Ngân sách & Chi phí"],
+  ["providers", "AI Provider & Routing"], ["approvals", "Approval Center"], ["budgets", "Giới hạn lượt chạy"],
   ["logs", "Activity Logs"], ["settings", "Cài đặt & Bảo mật"],
 ];
 const SOON = ["Market Research", "Product & Game Design", "Art Studio", "Audio Studio", "Game Development", "QA & Testing",

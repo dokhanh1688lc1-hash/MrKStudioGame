@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, upload, usd, useLoad, utc } from "./api";
+import { api, upload, useLoad, utc } from "./api";
 import { Async, Badge, Empty, Field, Pager, useAction } from "./ui";
 
 type Role = { role: string };
@@ -19,8 +19,8 @@ export function Dashboard({ go }: { go: (p: string) => void }) {
               <div className="stat"><b>{d.data.tasks_total}</b><span>Nhiệm vụ</span></div>
               <div className="stat" style={{ cursor: "pointer" }} onClick={() => go("approvals")}>
                 <b>{d.data.pending_approvals}</b><span>Chờ phê duyệt</span></div>
-              <div className="stat"><b>${d.data.spend_today_usd.toFixed(4)}</b><span>Chi phí hôm nay (đã biết giá)</span></div>
-              <div className="stat"><b>${d.data.spend_month_usd.toFixed(4)}</b><span>Chi phí tháng này (đã biết giá)</span></div>
+              <div className="stat"><b>{d.data.runs_today}</b><span>Lượt chạy AI hôm nay</span></div>
+              <div className="stat"><b>{d.data.runs_month}</b><span>Lượt chạy AI tháng này</span></div>
             </div>
             <div className="card">
               <b>Nhiệm vụ theo trạng thái</b>
@@ -241,10 +241,9 @@ export function Tasks({ role }: Role) {
         <Async loading={list.loading} error={list.error}>
           {list.data?.items.length ? (
             <div className="tablewrap"><table>
-              <thead><tr><th>ID</th><th>Tiêu đề</th><th>Phòng ban</th><th>Trạng thái</th><th>Chi phí ước tính / thực tế</th><th></th></tr></thead>
+              <thead><tr><th>ID</th><th>Tiêu đề</th><th>Phòng ban</th><th>Trạng thái</th><th></th></tr></thead>
               <tbody>{list.data.items.map((t) => (
                 <tr key={t.id}><td>{t.id}</td><td>{t.title}</td><td>{t.department_key}</td><td><Badge v={t.status} /></td>
-                  <td>{usd(t.estimated_cost)} / {usd(t.actual_cost)}</td>
                   <td className="row tight">
                     <button className="btn ghost" onClick={() => setSel(t.id)}>Chi tiết</button>
                     {canEdit(role) && ["Pending", "Planned", "Assigned", "Blocked", "Failed"].includes(t.status) &&
@@ -274,10 +273,10 @@ export function Tasks({ role }: Role) {
                   </>
                 )}
                 <b>Lần chạy ({detail.data.attempts.length})</b>
-                <div className="tablewrap"><table><thead><tr><th>#</th><th>Provider/model</th><th>Trạng thái</th><th>Token vào/ra</th><th>Chi phí</th><th>Lỗi</th></tr></thead>
+                <div className="tablewrap"><table><thead><tr><th>#</th><th>Provider/model</th><th>Trạng thái</th><th>Token vào/ra</th><th>Lỗi</th></tr></thead>
                   <tbody>{detail.data.attempts.map((a: any) => (
                     <tr key={a.id}><td>{a.id}</td><td>{a.provider}/{a.model}</td><td><Badge v={a.status} /></td>
-                      <td>{a.input_tokens ?? "—"} / {a.output_tokens ?? "—"}</td><td>{usd(a.cost_usd)}</td><td>{a.error}</td></tr>))}</tbody></table></div>
+                      <td>{a.input_tokens ?? "—"} / {a.output_tokens ?? "—"}</td><td>{a.error}</td></tr>))}</tbody></table></div>
               </>
             )}
           </Async>
@@ -395,47 +394,47 @@ export function Approvals({ role }: Role) {
 export function Budgets({ role }: Role) {
   const b = useLoad<any[]>("/budgets");
   const u = useLoad<any[]>("/usage?limit=30");
-  const [f, setF] = useState({ scope: "studio", scope_key: "", period: "monthly", limit_usd: "" });
+  const [f, setF] = useState({ scope: "studio", scope_key: "", period: "monthly", limit_runs: "" });
   const { run, busy, banner } = useAction();
   return (
     <>
-      <h2>Ngân sách & Chi phí</h2>{banner}
-      <div className="msg">Claude Code và Codex chạy theo gói thuê bao nên hệ thống ghi chi phí 0 USD cho chúng; ngân sách USD chỉ có tác dụng với chi phí do chính bạn ghi nhận. Hạn mức của gói thuê bao xem ở nhà cung cấp.</div>
+      <h2>Giới hạn lượt chạy</h2>{banner}
+      <div className="msg">Claude Code và Codex chạy theo gói thuê bao, không tính tiền theo token. Để không dùng hết hạn mức gói, hãy đặt giới hạn SỐ LƯỢT chạy AI (mỗi lần AI trả kết quả = 1 lượt) theo ngày/tháng/tổng. Khi hết giới hạn, nhiệm vụ bị chặn và không gọi AI. Hạn mức thật của gói xem ở nhà cung cấp.</div>
       {role === "owner" && (
         <form className="card" onSubmit={async (e) => {
           e.preventDefault();
-          if (await run(() => api("/budgets", { method: "POST", body: { ...f, limit_usd: Number(f.limit_usd) } }), "Đã tạo ngân sách.")) b.reload();
+          if (await run(() => api("/budgets", { method: "POST", body: { ...f, limit_runs: Number(f.limit_runs) } }), "Đã tạo giới hạn.")) b.reload();
         }}>
-          <b>Thêm ngân sách</b>
+          <b>Thêm giới hạn</b>
           <div className="row">
             <Field label="Phạm vi"><select value={f.scope} onChange={(e) => setF({ ...f, scope: e.target.value })}>
               {["studio", "project", "department", "provider", "model", "task"].map((s) => <option key={s}>{s}</option>)}</select></Field>
             <Field label="Khóa (ID dự án/task, key phòng ban, tên provider/model)"><input value={f.scope_key} disabled={f.scope === "studio"} onChange={(e) => setF({ ...f, scope_key: e.target.value })} /></Field>
             <Field label="Kỳ"><select value={f.period} onChange={(e) => setF({ ...f, period: e.target.value })}><option value="daily">Ngày</option><option value="monthly">Tháng</option><option value="total">Tổng</option></select></Field>
-            <Field label="Hạn mức (USD)"><input type="number" step="any" min="0" value={f.limit_usd} onChange={(e) => setF({ ...f, limit_usd: e.target.value })} required /></Field>
+            <Field label="Số lượt tối đa"><input type="number" step="1" min="1" value={f.limit_runs} onChange={(e) => setF({ ...f, limit_runs: e.target.value })} required /></Field>
           </div>
           <p><button className="btn" disabled={busy}>Thêm</button></p>
         </form>
       )}
       <div className="card">
-        <b>Ngân sách hiện có</b>
+        <b>Giới hạn hiện có</b>
         <Async loading={b.loading} error={b.error}>
           {b.data?.length ? (
             <div className="tablewrap"><table><thead><tr><th>Phạm vi</th><th>Kỳ</th><th>Hạn mức</th><th>Đã dùng</th><th>%</th><th></th></tr></thead>
               <tbody>{b.data.map((x) => (
-                <tr key={x.id}><td>{x.scope} {x.scope_key}</td><td>{x.period}</td><td>${x.limit_usd}</td><td>${x.spent_usd.toFixed(4)}</td>
+                <tr key={x.id}><td>{x.scope} {x.scope_key}</td><td>{x.period}</td><td>{x.limit_runs}</td><td>{x.used_runs}</td>
                   <td style={{ color: x.ratio >= 1 ? "var(--bad)" : x.ratio >= x.warn_ratio ? "var(--warn)" : undefined }}>{(x.ratio * 100).toFixed(1)}%</td>
-                  <td>{role === "owner" && <button className="btn danger" onClick={() => run(() => api(`/budgets/${x.id}`, { method: "DELETE" }), "Đã xóa ngân sách.", "Xóa ngân sách này?").then(b.reload)}>Xóa</button>}</td></tr>))}</tbody></table></div>
-          ) : <Empty text="Chưa đặt ngân sách nào. Nên đặt ngân sách studio trước khi dùng provider thật." />}
+                  <td>{role === "owner" && <button className="btn danger" onClick={() => run(() => api(`/budgets/${x.id}`, { method: "DELETE" }), "Đã xóa giới hạn.", "Xóa giới hạn này?").then(b.reload)}>Xóa</button>}</td></tr>))}</tbody></table></div>
+          ) : <Empty text="Chưa đặt giới hạn nào. Nên đặt giới hạn lượt chạy theo ngày cho cả studio." />}
         </Async>
       </div>
       <div className="card">
         <b>Lượt dùng gần đây</b>
         <Async loading={u.loading} error={u.error}>
           {u.data?.length ? (
-            <div className="tablewrap"><table><thead><tr><th>Thời gian</th><th>Task</th><th>Provider/model</th><th>Token vào/ra</th><th>Chi phí</th></tr></thead>
+            <div className="tablewrap"><table><thead><tr><th>Thời gian</th><th>Task</th><th>Provider/model</th><th>Token vào/ra</th></tr></thead>
               <tbody>{u.data.map((x) => (
-                <tr key={x.id}><td>{utc(x.created_at)}</td><td>{x.task_id}</td><td>{x.provider}/{x.model}</td><td>{x.input_tokens ?? "—"} / {x.output_tokens ?? "—"}</td><td>{usd(x.cost_usd)}</td></tr>))}</tbody></table></div>
+                <tr key={x.id}><td>{utc(x.created_at)}</td><td>{x.task_id}</td><td>{x.provider}/{x.model}</td><td>{x.input_tokens ?? "—"} / {x.output_tokens ?? "—"}</td></tr>))}</tbody></table></div>
           ) : <Empty text="Chưa có lượt dùng nào." />}
         </Async>
       </div>
@@ -563,7 +562,7 @@ export function Pipeline({ role }: Role) {
             <div className="card">
               <div className="row tight">
                 {canEdit(role) && <button className="btn" disabled={busy} onClick={async () => {
-                  await run(async () => setReport(await api(`/projects/${pid}/pipeline/run-ready`, { method: "POST" })), "Đã gửi lệnh chạy các bước sẵn sàng.", "Chạy các bước đã đủ điều kiện? Việc này có thể gọi AI thật và phát sinh chi phí (trong giới hạn ngân sách).");
+                  await run(async () => setReport(await api(`/projects/${pid}/pipeline/run-ready`, { method: "POST" })), "Đã gửi lệnh chạy các bước sẵn sàng.", "Chạy các bước đã đủ điều kiện? Việc này có thể gọi AI thật và tính vào hạn mức gói của bạn (trong giới hạn lượt chạy).");
                   refresh(); setTimeout(refresh, 2500);
                 }}>▶ Chạy các bước sẵn sàng</button>}
                 <button className="btn ghost" onClick={refresh}>Làm mới</button>
@@ -572,12 +571,12 @@ export function Pipeline({ role }: Role) {
                 <div className="msg">{report.map((r) => <div key={r.task_id}>{r.title}: {r.outcome === "started" ? "đã bắt đầu" : r.reason}</div>)}</div>
               )}
               <div className="tablewrap"><table>
-                <thead><tr><th>Bước</th><th>Phòng ban</th><th>Phụ thuộc</th><th>Trạng thái</th><th>Chi phí</th><th></th></tr></thead>
+                <thead><tr><th>Bước</th><th>Phòng ban</th><th>Phụ thuộc</th><th>Trạng thái</th><th></th></tr></thead>
                 <tbody>{steps.data?.map((t) => (
                   <tr key={t.id}><td>{t.requires_approval ? "🔒 " : ""}{t.title.replace("[Pipeline] ", "")}{t.error && <div className="muted" style={{ color: "var(--bad)" }}>{t.error}</div>}</td>
                     <td>{t.department_key}</td>
                     <td className="muted">{t.depends_on.map((d: number) => byId[d]?.title.replace("[Pipeline] ", "").split(".")[0]).join(", ") || "—"}</td>
-                    <td><Badge v={t.status} /></td><td>{usd(t.actual_cost)}</td>
+                    <td><Badge v={t.status} /></td>
                     <td>{t.result && <details><summary>Kết quả ({t.result_source})</summary><pre className="out">{t.result}</pre></details>}</td></tr>
                 ))}</tbody></table></div>
             </div>

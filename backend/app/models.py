@@ -99,9 +99,6 @@ class Task(Base, Stamped):
     model: Mapped[str | None] = mapped_column(String(120), nullable=True)
     sensitive: Mapped[bool] = mapped_column(Boolean, default=False)
     status: Mapped[str] = mapped_column(String(24), default="Assigned")
-    estimated_cost: Mapped[float | None] = mapped_column(Float, nullable=True)
-    actual_cost: Mapped[float | None] = mapped_column(Float, nullable=True)
-    budget_limit: Mapped[float | None] = mapped_column(Float, nullable=True)
     max_output_tokens: Mapped[int] = mapped_column(Integer, default=1024)
     timeout_s: Mapped[int] = mapped_column(Integer, default=60)
     max_retries: Mapped[int] = mapped_column(Integer, default=1)
@@ -136,7 +133,6 @@ class TaskAttempt(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
     started_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     task: Mapped[Task] = relationship(back_populates="attempts")
@@ -173,13 +169,13 @@ class Budget(Base, Stamped):
     scope: Mapped[str] = mapped_column(String(16))
     scope_key: Mapped[str] = mapped_column(String(80), default="")  # project id / dept key / provider / model
     period: Mapped[str] = mapped_column(String(10), default="monthly")
-    limit_usd: Mapped[float] = mapped_column(Float)
+    limit_runs: Mapped[int] = mapped_column(Integer)  # số lượt chạy AI tối đa trong kỳ
     warn_ratio: Mapped[float] = mapped_column(Float, default=0.8)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     __table_args__ = (
         CheckConstraint(_in("scope", BUDGET_SCOPES), name="ck_budget_scope"),
         CheckConstraint(_in("period", BUDGET_PERIODS), name="ck_budget_period"),
-        CheckConstraint("limit_usd > 0", name="ck_budget_limit"),
+        CheckConstraint("limit_runs > 0", name="ck_budget_limit"),
         UniqueConstraint("scope", "scope_key", "period", name="uq_budget"),
     )
 
@@ -194,7 +190,6 @@ class UsageRecord(Base):
     model: Mapped[str] = mapped_column(String(120), default="")
     input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)  # None = không biết giá
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
 

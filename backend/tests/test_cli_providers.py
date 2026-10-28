@@ -93,7 +93,6 @@ def test_run_via_claude_cli_safely(tmp_path, clis):
     t = mk_task(c, p["id"], "game_dev", objective="NỘI-DUNG-BÍ-MẬT-123; rm -rf /")
     r = c.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()
     assert r["status"] == "Completed" and r["result"] == "CLAUDE-FAKE-OUT" and r["result_source"] == "claude_cli"
-    assert r["actual_cost"] == 0.0
     a = r["attempts"][0]
     assert a["input_tokens"] == 11 and a["output_tokens"] == 22
     log = clis.read_text()

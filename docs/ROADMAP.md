@@ -7,7 +7,7 @@
 | Quản lý dự án (workspace riêng), Task Center, phụ thuộc, hủy, retry/timeout | Implemented |
 | 14 phòng ban + agent (registry, bật/tắt, provider ưu tiên) | Implemented |
 | Routing, fallback có kiểm soát, chế độ nội bộ; **đã gỡ hoàn toàn API key/adapter OpenAI & Anthropic** (chỉ dùng CLI trên máy) | Implemented |
-| Ngân sách USD (6 phạm vi × 3 kỳ) và usage — CLI/nội bộ luôn 0 USD nên ngân sách hiện ít tác dụng; nên thay bằng giới hạn số lượt chạy | Implemented (cần thiết kế lại) |
+| Giới hạn số lượt chạy AI (6 phạm vi × 3 kỳ) và usage; migration 0003 chuyển từ ngân sách USD | Implemented |
 | Approval Center, Emergency Stop | Implemented |
 | Dashboard tiếng Việt: 9/25 trang | Partially Implemented |
 | Alembic migrations (baseline + stamp DB cũ + test không lệch model) | Implemented |
@@ -44,7 +44,7 @@
 Lưu ý: nút “Chạy các bước sẵn sàng” chỉ chạy **một lượt** mỗi lần bấm (kiểm soát chi phí); bấm lại để chạy lượt kế tiếp.
 
 ## Các bước tiếp theo (ưu tiên)
-1. Đăng nhập Claude Code/Codex, kiểm tra kết nối, chạy nhiệm vụ thật; thay ngân sách USD bằng giới hạn số lượt chạy.
+1. Đăng nhập Claude Code/Codex, kiểm tra kết nối, chạy nhiệm vụ thật.
 2. (đã xong) Alembic migrations + sao lưu.
 3. Phase 2: workflow riêng từng phòng ban (Market Research → Game Design → Game Dev → QA → …) và các trang còn lại (Asset Library, Telegram…).
 4. Phase 3: game 2D mẫu bằng Godot 4 (GDD, gameplay, tài sản riêng, hồ sơ bản quyền).

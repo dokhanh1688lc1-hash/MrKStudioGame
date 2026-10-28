@@ -21,9 +21,9 @@ Thứ tự quyết định khi chạy nhiệm vụ:
 3. Một provider “dùng được” khi: đã **bật**, tìm thấy chương trình trên máy, và (nếu task nhạy cảm) có `allow_sensitive`. Mặc định hai CLI **tắt**; bật sau khi “Kiểm tra kết nối” hiện `ok`.
 4. **Fallback khi lỗi lúc chạy** sang chương trình còn lại: chỉ khi bật “Cho phép tự chuyển provider” (mặc định tắt) và task không chỉ định provider.
 5. Lỗi retry được: timeout, quá tải (429/502/503/504, “overloaded”); tối đa `max_retries` (0–3). Chưa đăng nhập, hết hạn mức gói (“usage limit”) và lỗi khác **không** retry.
-6. Mỗi lần gọi kiểm tra lại Emergency Stop và ngân sách.
+6. Mỗi lần gọi kiểm tra lại Emergency Stop và giới hạn lượt chạy.
 
-Chi phí: gói thuê bao, không có giá theo token → hệ thống ghi 0 USD cho CLI và nội bộ, **không** theo dõi tiền thật. Số token (nếu chương trình báo) vẫn được lưu. Hạn mức gói xem ở nhà cung cấp.
+Chi phí: gói thuê bao, không tính tiền theo token → hệ thống **không** có khái niệm USD. Thay vào đó có **giới hạn số lượt chạy** (mỗi lần AI trả kết quả = 1 lượt) theo studio/dự án/phòng ban/provider/model/nhiệm vụ × ngày/tháng/tổng; hết giới hạn thì nhiệm vụ bị chặn (402) và không gọi AI. Số token (nếu chương trình báo) vẫn được lưu. Hạn mức thật của gói xem ở nhà cung cấp.
 
 Model: để trống = dùng model mặc định của chương trình; có thể đặt trong *AI Provider & Routing* (kiểm tra regex, không qua shell).
 

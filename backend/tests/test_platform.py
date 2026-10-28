@@ -122,18 +122,17 @@ def test_internal_mode_task_runs_without_programs_and_is_labeled(offline):
     t = mk_task(offline, p["id"], "market_research")
     r = offline.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()
     assert r["status"] == "Completed" and r["result_source"] == "internal"
-    assert "KHÔNG phải kết quả do AI" in r["result"] and r["actual_cost"] == 0.0
+    assert "KHÔNG phải kết quả do AI" in r["result"]
 
 
-def test_real_provider_call_usage_and_zero_cost(client, fake):
+def test_real_provider_call_records_usage(client, fake):
     p = mk_project(client)
     t = mk_task(client, p["id"], "game_dev")
     r = client.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()
     assert r["status"] == "Completed" and r["result"] == "CLAUDE-OUT" and r["result_source"] == "claude_cli"
-    assert r["actual_cost"] == 0.0  # gói thuê bao: không tính USD theo token
     assert fake.calls["claude_cli"] == 1 and fake.calls["codex_cli"] == 0
     u = client.get("/api/usage").json()[0]
-    assert u["provider"] == "claude_cli" and u["input_tokens"] == 1000 and u["cost_usd"] == 0.0
+    assert u["provider"] == "claude_cli" and u["input_tokens"] == 1000
 
 
 def test_retry_then_fail_is_bounded(client, fake):
@@ -169,46 +168,57 @@ def test_explicit_unusable_provider_is_422(offline):
     assert offline.post(f"/api/tasks/{t['id']}/run").status_code == 422
 
 
-# ---------- ngân sách (logic kiểm tra; CLI/nội bộ luôn 0 USD nên cần dữ liệu chi phí để kích hoạt) ----------
-def _seed_spend(c, project_id, cost):
+# ---------- giới hạn số lượt chạy ----------
+def _seed_runs(c, project_id, n):
     from app.models import UsageRecord
     with c.app.state.sf() as s:
-        s.add(UsageRecord(project_id=project_id, department_key="game_dev", provider="claude_cli", model="", cost_usd=cost))
+        for _ in range(n):
+            s.add(UsageRecord(project_id=project_id, department_key="game_dev", provider="claude_cli", model=""))
         s.commit()
 
 
-def test_budget_blocks_when_already_spent(client, fake):
+def test_run_limit_blocks_when_exhausted(client, fake):
     p = mk_project(client)
-    client.post("/api/budgets", json={"scope": "studio", "period": "daily", "limit_usd": 0.5})
-    _seed_spend(client, p["id"], 0.6)  # đã tiêu quá hạn mức (vd. dịch vụ trả phí khác ghi nhận chi phí)
+    client.post("/api/budgets", json={"scope": "studio", "period": "daily", "limit_runs": 3})
+    _seed_runs(client, p["id"], 3)
     t = mk_task(client, p["id"], "game_dev")
     r = client.post(f"/api/tasks/{t['id']}/run")
-    assert r.status_code == 402 and "ngân sách" in r.json()["detail"].lower()
-    assert fake.calls["claude_cli"] == 0  # không gọi khi vượt ngân sách
+    assert r.status_code == 402 and "giới hạn" in r.json()["detail"].lower()
+    assert fake.calls["claude_cli"] == 0
     assert client.get(f"/api/tasks/{t['id']}").json()["status"] == "Blocked"
 
 
-def test_budget_does_not_block_when_under_limit(client):
+def test_run_limit_counts_real_runs(client):
     p = mk_project(client)
-    client.post("/api/budgets", json={"scope": "studio", "period": "daily", "limit_usd": 10})
-    _seed_spend(client, p["id"], 1.0)
+    client.post("/api/budgets", json={"scope": "studio", "period": "daily", "limit_runs": 2})
+    for _ in range(2):
+        t = mk_task(client, p["id"], "game_dev")
+        assert client.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()["status"] == "Completed"
+    t = mk_task(client, p["id"], "game_dev")
+    assert client.post(f"/api/tasks/{t['id']}/run").status_code == 402
+
+
+def test_run_limit_does_not_block_under_limit(client):
+    p = mk_project(client)
+    client.post("/api/budgets", json={"scope": "studio", "period": "daily", "limit_runs": 10})
+    _seed_runs(client, p["id"], 1)
     t = mk_task(client, p["id"], "game_dev")
     assert client.post(f"/api/tasks/{t['id']}/run", params={"wait": True}).json()["status"] == "Completed"
 
 
-def test_budget_summary_ratio_and_warning(client):
+def test_run_limit_summary_ratio(client):
     p = mk_project(client)
-    client.post("/api/budgets", json={"scope": "project", "scope_key": str(p["id"]), "period": "total", "limit_usd": 2})
-    _seed_spend(client, p["id"], 1.0)
+    client.post("/api/budgets", json={"scope": "project", "scope_key": str(p["id"]), "period": "total", "limit_runs": 4})
+    _seed_runs(client, p["id"], 2)
     b = client.get("/api/budgets").json()[0]
-    assert abs(b["spent_usd"] - 1.0) < 1e-9 and abs(b["ratio"] - 0.5) < 1e-9
+    assert b["used_runs"] == 2 and abs(b["ratio"] - 0.5) < 1e-9
 
 
-def test_budget_validation(client):
-    assert client.post("/api/budgets", json={"scope": "studio", "limit_usd": -1}).status_code == 422
-    assert client.post("/api/budgets", json={"scope": "project", "scope_key": "999", "limit_usd": 5}).status_code == 422
-    assert client.post("/api/budgets", json={"scope": "studio", "limit_usd": 5}).status_code == 201
-    assert client.post("/api/budgets", json={"scope": "studio", "limit_usd": 6}).status_code == 409
+def test_run_limit_validation(client):
+    assert client.post("/api/budgets", json={"scope": "studio", "limit_runs": -1}).status_code == 422
+    assert client.post("/api/budgets", json={"scope": "project", "scope_key": "999", "limit_runs": 5}).status_code == 422
+    assert client.post("/api/budgets", json={"scope": "studio", "limit_runs": 5}).status_code == 201
+    assert client.post("/api/budgets", json={"scope": "studio", "limit_runs": 6}).status_code == 409
 
 
 # ---------- phê duyệt ----------

@@ -121,8 +121,8 @@ def budgets(_: Principal = Depends(current_user), s: Session = Depends(get_db)):
     out = []
     for b in s.scalars(select(Budget).order_by(Budget.id)):
         used = spent(s, b.scope, b.scope_key or "0", b.period)
-        out.append({**BudgetOut.model_validate(b).model_dump(), "spent_usd": used,
-                    "ratio": used / b.limit_usd, "spent_is_estimate": False})
+        out.append({**BudgetOut.model_validate(b).model_dump(), "used_runs": used,
+                    "ratio": used / b.limit_runs})
     return out
 
 
@@ -143,7 +143,7 @@ def create_budget(body: BudgetIn, user: Principal = Depends(require("owner")), s
     except IntegrityError:
         s.rollback()
         raise HTTPException(409, "Ngân sách cho phạm vi/kỳ này đã tồn tại.")
-    audit(s, user.username, "budget_created", "budget", b.id, f"{b.scope}/{b.scope_key}/{b.period}={b.limit_usd}")
+    audit(s, user.username, "budget_created", "budget", b.id, f"{b.scope}/{b.scope_key}/{b.period}={b.limit_runs}")
     s.commit()
     return b
 
@@ -174,8 +174,7 @@ def audit_logs(action: str = "", limit: int = Query(50, ge=1, le=200), offset: i
 
 
 def _system_state(s: Session) -> dict:
-    return {"emergency_stop": get_bool(s, "emergency_stop"), "fallback_enabled": get_bool(s, "fallback_enabled"),
-            "approval_cost_threshold_usd": float(get_setting(s, "approval_cost_threshold_usd"))}
+    return {"emergency_stop": get_bool(s, "emergency_stop"), "fallback_enabled": get_bool(s, "fallback_enabled")}
 
 
 @router.get("/system/state")
@@ -196,8 +195,6 @@ def patch_settings(body: SettingsPatch, user: Principal = Depends(require("owner
     d = body.model_dump(exclude_unset=True)
     if "fallback_enabled" in d and d["fallback_enabled"] is not None:
         set_setting(s, "fallback_enabled", "1" if d["fallback_enabled"] else "0")
-    if "approval_cost_threshold_usd" in d and d["approval_cost_threshold_usd"] is not None:
-        set_setting(s, "approval_cost_threshold_usd", str(d["approval_cost_threshold_usd"]))
     audit(s, user.username, "settings_changed", "system", "", ", ".join(d))
     s.commit()
     return _system_state(s)
@@ -212,7 +209,7 @@ def dashboard(request: Request, _: Principal = Depends(current_user), s: Session
         "projects_total": sum(projects.values()), "projects_by_status": projects,
         "tasks_total": sum(by_status.values()), "tasks_by_status": by_status,
         "pending_approvals": s.scalar(select(func.count()).select_from(Approval).where(Approval.status == "pending")),
-        "spend_today_usd": spent(s, "studio", "", "daily"), "spend_month_usd": spent(s, "studio", "", "monthly"),
+        "runs_today": spent(s, "studio", "", "daily"), "runs_month": spent(s, "studio", "", "monthly"),
         "providers": [{"name": p.name, "configured": p.configured, "enabled": p.enabled,
                        "last_check_status": p.last_check_status} for p in provs],
         "system": _system_state(s),

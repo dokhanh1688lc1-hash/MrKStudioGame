@@ -46,7 +46,6 @@ export function useLoad<T>(path: string | null, deps: unknown[] = []) {
 }
 
 export const utc = (s?: string | null) => (s ? new Date(s).toLocaleString("vi-VN") : "—");
-export const usd = (v: number | null | undefined) => (v == null ? "chưa biết" : `$${v.toFixed(4)}`);
 
 export async function upload(path: string, files: File[]): Promise<any> {
   const fd = new FormData();

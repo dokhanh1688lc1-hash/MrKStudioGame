@@ -16,7 +16,7 @@ from ..models import (Agent, Approval, Department, ProviderConfig, Task, TaskAtt
                       TaskDependency, UsageRecord)
 from ..providers.base import ProviderError
 from ..providers.registry import FAMILY_TO_PROVIDER, ProviderRegistry
-from .budget import check_budget, compute_cost, estimate_tokens, spent
+from .budget import check_limits
 from .common import EngineError, audit, get_bool, get_setting, set_setting
 
 RUNNABLE = {"Pending", "Planned", "Assigned", "Blocked", "Failed"}
@@ -96,12 +96,6 @@ class Orchestrator:
         self.registry = registry
         self.retry_delay = retry_delay
 
-    # ---------- ước tính ----------
-    def estimate(self, s: Session, t: Task, provider: str) -> float | None:
-        cfg = s.scalar(select(ProviderConfig).where(ProviderConfig.name == provider))
-        in_tok = estimate_tokens(build_prompt(t, upstream_results(s, t)))
-        return compute_cost(cfg, in_tok, t.max_output_tokens)
-
     # ---------- chuẩn bị (đồng bộ, trả lỗi ngay cho người dùng) ----------
     def prepare_run(self, task_id: int, actor: str) -> list[tuple[str, str]]:
         with self.sf() as s:
@@ -125,27 +119,21 @@ class Orchestrator:
             chain, reason = plan_route(s, self.registry, department_key=t.department_key,
                                        provider=t.provider, model=t.model, sensitive=t.sensitive)
             primary, model = chain[0]
-            t.estimated_cost = self.estimate(s, t, primary)
 
-            threshold = float(get_setting(s, "approval_cost_threshold_usd") or 0)
-            need = t.requires_approval or (t.estimated_cost is not None and t.estimated_cost > threshold)
-            if need:
+            if t.requires_approval:
                 appr = s.scalar(select(Approval).where(Approval.task_id == t.id, Approval.kind == "task_run")
                                 .order_by(Approval.id.desc()))
                 if not (appr and appr.status == "approved"):
                     t.status = "Awaiting Approval"
                     if not appr or appr.status != "pending":
                         s.add(Approval(kind="task_run", task_id=t.id, title=f"Chạy nhiệm vụ #{t.id}: {t.title}",
-                                       detail=f"Provider: {primary}/{model}. Chi phí ước tính: "
-                                              f"{'chưa biết (chưa cấu hình giá)' if t.estimated_cost is None else f'{t.estimated_cost:.4f} USD (ước tính)'}."))
+                                       detail=f"Provider: {primary}/{model}."))
                         audit(s, actor, "approval_requested", "task", t.id)
                     s.commit()
                     raise EngineError(409, "Nhiệm vụ cần phê duyệt trước khi chạy. Xem Approval Center.")
 
-            v = check_budget(s, project_id=t.project_id, department_key=t.department_key, provider=primary,
-                             model=model, task_id=t.id, est_cost=t.estimated_cost,
-                             external=self.registry.get(primary).external, task_limit=t.budget_limit,
-                             task_spent=spent(s, "task", str(t.id), "total"))
+            v = check_limits(s, project_id=t.project_id, department_key=t.department_key, provider=primary,
+                             model=model, task_id=t.id)
             if not v.ok:
                 t.status, t.error = "Blocked", v.message
                 audit(s, actor, "task_blocked_budget", "task", t.id, v.message)
@@ -185,16 +173,12 @@ class Orchestrator:
 
             for pname, model in chain:
                 prov = self.registry.get(pname)
-                cfg = s.scalar(select(ProviderConfig).where(ProviderConfig.name == pname))
                 for n in range(t.max_retries + 1):
                     if self._status(s, task_id) != "Running" or get_bool(s, "emergency_stop"):
                         return self._abort(task_id)
-                    est = compute_cost(cfg, estimate_tokens(prompt), t.max_output_tokens)
                     if not first:
-                        v = check_budget(s, project_id=t.project_id, department_key=t.department_key,
-                                         provider=pname, model=model, task_id=t.id, est_cost=est,
-                                         external=prov.external, task_limit=t.budget_limit,
-                                         task_spent=spent(s, "task", str(t.id), "total"))
+                        v = check_limits(s, project_id=t.project_id, department_key=t.department_key,
+                                         provider=pname, model=model, task_id=t.id)
                         if not v.ok:
                             return self._fail(s, t, v.message)
                         time.sleep(self.retry_delay * n)
@@ -221,14 +205,11 @@ class Orchestrator:
                         s.commit()
                         break
 
-                    cost = compute_cost(cfg, res.input_tokens, res.output_tokens)
                     att.status, att.finished_at = "ok", utcnow()
-                    att.input_tokens, att.output_tokens, att.cost_usd = res.input_tokens, res.output_tokens, cost
+                    att.input_tokens, att.output_tokens = res.input_tokens, res.output_tokens
                     s.add(UsageRecord(task_id=t.id, project_id=t.project_id, department_key=t.department_key,
                                       provider=pname, model=model, input_tokens=res.input_tokens,
-                                      output_tokens=res.output_tokens, cost_usd=cost))
-                    if cost is not None:
-                        t.actual_cost = (t.actual_cost or 0.0) + cost
+                                      output_tokens=res.output_tokens))
                     s.commit()
                     if self._status(s, task_id) != "Running" or get_bool(s, "emergency_stop"):
                         return self._abort(task_id)

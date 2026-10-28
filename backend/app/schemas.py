@@ -100,7 +100,6 @@ class TaskIn(BaseModel):
     provider: ProviderName | None = None
     model: str | None = None
     sensitive: bool = False
-    budget_limit: float | None = Field(default=None, gt=0)
     max_output_tokens: int = Field(default=1024, ge=16, le=32000)
     timeout_s: int = Field(default=60, ge=1, le=600)
     max_retries: int = Field(default=1, ge=0, le=3)
@@ -116,7 +115,6 @@ class AttemptOut(ORM):
     error: str | None
     input_tokens: int | None
     output_tokens: int | None
-    cost_usd: float | None
     started_at: datetime
     finished_at: datetime | None
 
@@ -136,9 +134,6 @@ class TaskOut(ORM):
     model: str | None
     sensitive: bool
     status: str
-    estimated_cost: float | None
-    actual_cost: float | None
-    budget_limit: float | None
     max_output_tokens: int
     timeout_s: int
     max_retries: int
@@ -202,7 +197,7 @@ class BudgetIn(BaseModel):
     scope: Literal["studio", "project", "department", "provider", "model", "task"]
     scope_key: str = ""
     period: Literal["daily", "monthly", "total"] = "monthly"
-    limit_usd: float = Field(gt=0)
+    limit_runs: int = Field(gt=0, le=1_000_000)
     warn_ratio: float = Field(default=0.8, gt=0, le=1)
 
 
@@ -211,7 +206,7 @@ class BudgetOut(ORM):
     scope: str
     scope_key: str
     period: str
-    limit_usd: float
+    limit_runs: int
     warn_ratio: float
     enabled: bool
 
@@ -235,7 +230,6 @@ class UsageOut(ORM):
     model: str
     input_tokens: int | None
     output_tokens: int | None
-    cost_usd: float | None
     created_at: datetime
 
 
@@ -245,4 +239,3 @@ class StopIn(BaseModel):
 
 class SettingsPatch(BaseModel):
     fallback_enabled: bool | None = None
-    approval_cost_threshold_usd: float | None = Field(default=None, ge=0)

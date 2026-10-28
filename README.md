@@ -1,7 +1,7 @@
 # MrK Studio Game — AI Game Studio Platform
 
 Nền tảng điều hành studio game dùng AI: quản lý nhiều dự án, 14 phòng ban AI, điều phối hai nhà cung cấp
-(ChatGPT/Codex cho tư duy/sáng tạo, Claude Code cho kỹ thuật), kiểm soát ngân sách, phê duyệt và audit.
+(ChatGPT/Codex cho tư duy/sáng tạo, Claude Code cho kỹ thuật), giới hạn số lượt chạy AI, phê duyệt và audit.
 Đặc tả gốc: [`MASTER_PROMPT_V2.md`](MASTER_PROMPT_V2.md).
 
 **Trạng thái: Phase 1 (Core Platform) — xem [docs/ROADMAP.md](docs/ROADMAP.md) để biết chính xác phần nào đã/chưa làm.**
@@ -27,7 +27,7 @@ Hệ thống chỉ dùng **Claude Code** và **Codex (ChatGPT)** đã cài và �
 3. Phòng ban nghiêng về Claude dùng Claude Code, phòng ban nghiêng về ChatGPT dùng Codex (đổi ở **Phòng ban & Agent**). Xem [docs/AI_ROUTING.md](docs/AI_ROUTING.md).
 4. Chưa bật chương trình nào → **chế độ nội bộ**: chỉ dựng khung công việc, ghi rõ “không phải kết quả AI”.
 
-Việc dùng tính vào hạn mức gói thuê bao của bạn, không tính USD theo token. Ứng dụng desktop ChatGPT/Claude không điều khiển được; chỉ hai công cụ dòng lệnh này.
+Việc dùng tính vào hạn mức gói thuê bao của bạn, không tính USD theo token; dùng “Giới hạn lượt chạy” để không cạn hạn mức. Ứng dụng desktop ChatGPT/Claude không điều khiển được; chỉ hai công cụ dòng lệnh này.
 
 ## Dự án đang làm dở (sửa / nâng cấp)
 Trang **Dự án** → nút **Sửa** để đổi thông tin; nút **Mã nguồn** để tải lên dự án có sẵn (.zip tải từ Claude hoặc từng tệp),
