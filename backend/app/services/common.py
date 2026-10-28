@@ -1,0 +1,40 @@
+from __future__ import annotations
+
+from sqlalchemy.orm import Session
+
+from ..models import AuditLog, SystemSetting
+
+
+class EngineError(Exception):
+    def __init__(self, status: int, message: str):
+        super().__init__(message)
+        self.status = status
+        self.message = message
+
+
+def audit(s: Session, actor: str, action: str, entity: str = "", entity_id: str | int = "", detail: str = "") -> None:
+    s.add(AuditLog(actor=actor, action=action, entity=entity, entity_id=str(entity_id), detail=detail[:2000]))
+
+
+DEFAULT_SETTINGS = {
+    "emergency_stop": "0",
+    "fallback_enabled": "0",           # cho phép chuyển sang provider ngoài còn lại khi lỗi
+    "approval_cost_threshold_usd": "1.0",  # ước tính vượt ngưỡng này → cần phê duyệt
+}
+
+
+def get_setting(s: Session, key: str) -> str:
+    row = s.get(SystemSetting, key)
+    return row.value if row else DEFAULT_SETTINGS.get(key, "")
+
+
+def set_setting(s: Session, key: str, value: str) -> None:
+    row = s.get(SystemSetting, key)
+    if row:
+        row.value = value
+    else:
+        s.add(SystemSetting(key=key, value=value))
+
+
+def get_bool(s: Session, key: str) -> bool:
+    return get_setting(s, key) == "1"
