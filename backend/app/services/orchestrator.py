@@ -23,8 +23,23 @@ RUNNABLE = {"Pending", "Planned", "Assigned", "Blocked", "Failed"}
 FINAL = {"Completed", "Cancelled"}
 
 
-def build_prompt(t: Task) -> str:
+MAX_UPSTREAM_CHARS = 6000
+
+
+def upstream_results(s: Session, t: Task) -> list[tuple[str, str]]:
+    """Kết quả (đã hoàn thành) của các nhiệm vụ phụ thuộc, để truyền sang bước sau."""
+    out = []
+    for d in s.scalars(select(TaskDependency).where(TaskDependency.task_id == t.id)):
+        dt = s.get(Task, d.depends_on_id)
+        if dt and dt.status == "Completed" and dt.result:
+            out.append((dt.title, dt.result[:MAX_UPSTREAM_CHARS]))
+    return out
+
+
+def build_prompt(t: Task, upstream: list[tuple[str, str]] | None = None) -> str:
     parts = [f"# Nhiệm vụ: {t.title}", f"## Mục tiêu\n{t.objective}"]
+    for title, res in upstream or []:
+        parts.append(f"## Kết quả từ bước trước: {title}\n{res}")
     for label, val in (("Bối cảnh / đầu vào", t.context), ("Ràng buộc", t.constraints),
                        ("Đầu ra mong đợi", t.expected_output), ("Tiêu chí nghiệm thu", t.acceptance_criteria)):
         if val.strip():
@@ -84,7 +99,7 @@ class Orchestrator:
     # ---------- ước tính ----------
     def estimate(self, s: Session, t: Task, provider: str) -> float | None:
         cfg = s.scalar(select(ProviderConfig).where(ProviderConfig.name == provider))
-        in_tok = estimate_tokens(build_prompt(t))
+        in_tok = estimate_tokens(build_prompt(t, upstream_results(s, t)))
         return compute_cost(cfg, in_tok, t.max_output_tokens)
 
     # ---------- chuẩn bị (đồng bộ, trả lỗi ngay cho người dùng) ----------
@@ -165,7 +180,7 @@ class Orchestrator:
             t = s.get(Task, task_id)
             agent = s.get(Agent, t.agent_id) if t.agent_id else None
             system = agent.system_prompt if agent else ""
-            prompt = build_prompt(t)
+            prompt = build_prompt(t, upstream_results(s, t))
             last_error, first = "Không có lần gọi nào được thực hiện.", True
 
             for pname, model in chain:

@@ -45,7 +45,7 @@ def create_app(settings: Settings | None = None, transports: dict | None = None,
     def health():
         return {"status": "ok"}
 
-    for r in (auth_users.router, projects.router, tasks.router, ops.router):
+    for r in (auth_users.router, projects.router, tasks.router, tasks.pipe, ops.router):
         app.include_router(r)
 
     dist = settings.frontend_dist

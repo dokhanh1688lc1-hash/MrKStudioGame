@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { api, getToken, setToken, useLoad } from "./api";
 import { Field, useAction } from "./ui";
-import { Agents, Approvals, Budgets, Dashboard, Logs, Projects, Providers, Settings, Tasks } from "./pages";
+import { Agents, Approvals, Budgets, Dashboard, Logs, Pipeline, Projects, Providers, Settings, Tasks } from "./pages";
 
 const PAGES: [string, string][] = [
-  ["dashboard", "CEO Dashboard"], ["projects", "Dự án"], ["tasks", "Task Center"], ["agents", "Phòng ban & Agent"],
+  ["dashboard", "CEO Dashboard"], ["projects", "Dự án"], ["pipeline", "Pipeline sản xuất"], ["tasks", "Task Center"], ["agents", "Phòng ban & Agent"],
   ["providers", "AI Provider & Routing"], ["approvals", "Approval Center"], ["budgets", "Ngân sách & Chi phí"],
   ["logs", "Activity Logs"], ["settings", "Cài đặt & Bảo mật"],
 ];
@@ -57,6 +57,7 @@ export default function App() {
         {state.data?.emergency_stop && <div className="stop">⛔ EMERGENCY STOP đang bật — mọi nhiệm vụ mới bị chặn. Tắt trong “Cài đặt & Bảo mật”.</div>}
         {page === "dashboard" && <Dashboard go={go} />}
         {page === "projects" && <Projects role={role} />}
+        {page === "pipeline" && <Pipeline role={role} />}
         {page === "tasks" && <Tasks role={role} />}
         {page === "agents" && <Agents role={role} />}
         {page === "providers" && <Providers role={role} />}

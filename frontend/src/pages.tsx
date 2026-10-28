@@ -438,3 +438,64 @@ export function Settings({ role }: Role) {
     </>
   );
 }
+
+// ---------------- Pipeline ----------------
+export function Pipeline({ role }: Role) {
+  const projects = useLoad<{ items: any[] }>("/projects?limit=100");
+  const [pid, setPid] = useState("");
+  const [brief, setBrief] = useState("");
+  const [tick, setTick] = useState(0);
+  const steps = useLoad<any[]>(pid ? `/projects/${pid}/pipeline` : null, [tick]);
+  const { run, busy, banner } = useAction();
+  const [report, setReport] = useState<any[] | null>(null);
+  const refresh = () => setTick((t) => t + 1);
+  const byId = Object.fromEntries((steps.data || []).map((t) => [t.id, t]));
+  return (
+    <>
+      <h2>Pipeline sản xuất game</h2>{banner}
+      <div className="msg">Chuỗi 12 bước liên phòng ban (Research → Concept → GDD → … → Phát hành). Kết quả bước trước được đưa vào bước sau. Các bước đánh dấu 🔒 cần chủ studio phê duyệt trong Approval Center trước khi chạy. Không bước nào tự phát hành hay chi tiền.</div>
+      <div className="card">
+        <Field label="Dự án">
+          <select value={pid} onChange={(e) => { setPid(e.target.value); setReport(null); }}>
+            <option value="">— chọn dự án —</option>{projects.data?.items.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </Field>
+      </div>
+      {pid && (
+        <Async loading={steps.loading} error={steps.error}>
+          {steps.data && steps.data.length === 0 ? (
+            canEdit(role) ? (
+              <form className="card" onSubmit={async (e) => { e.preventDefault(); if (await run(() => api(`/projects/${pid}/pipeline`, { method: "POST", body: { brief } }), "Đã khởi tạo pipeline.")) refresh(); }}>
+                <b>Dự án chưa có pipeline</b>
+                <Field label="Yêu cầu / định hướng của chủ studio (tùy chọn, được gửi cho mọi bước)"><textarea value={brief} onChange={(e) => setBrief(e.target.value)} /></Field>
+                <p><button className="btn" disabled={busy}>Khởi tạo pipeline 12 bước</button></p>
+              </form>
+            ) : <Empty text="Dự án chưa có pipeline." />
+          ) : (
+            <div className="card">
+              <div className="row tight">
+                {canEdit(role) && <button className="btn" disabled={busy} onClick={async () => {
+                  await run(async () => setReport(await api(`/projects/${pid}/pipeline/run-ready`, { method: "POST" })), "Đã gửi lệnh chạy các bước sẵn sàng.", "Chạy các bước đã đủ điều kiện? Việc này có thể gọi AI thật và phát sinh chi phí (trong giới hạn ngân sách).");
+                  refresh(); setTimeout(refresh, 2500);
+                }}>▶ Chạy các bước sẵn sàng</button>}
+                <button className="btn ghost" onClick={refresh}>Làm mới</button>
+              </div>
+              {report && report.length > 0 && (
+                <div className="msg">{report.map((r) => <div key={r.task_id}>{r.title}: {r.outcome === "started" ? "đã bắt đầu" : r.reason}</div>)}</div>
+              )}
+              <div className="tablewrap"><table>
+                <thead><tr><th>Bước</th><th>Phòng ban</th><th>Phụ thuộc</th><th>Trạng thái</th><th>Chi phí</th><th></th></tr></thead>
+                <tbody>{steps.data?.map((t) => (
+                  <tr key={t.id}><td>{t.requires_approval ? "🔒 " : ""}{t.title.replace("[Pipeline] ", "")}{t.error && <div className="muted" style={{ color: "var(--bad)" }}>{t.error}</div>}</td>
+                    <td>{t.department_key}</td>
+                    <td className="muted">{t.depends_on.map((d: number) => byId[d]?.title.replace("[Pipeline] ", "").split(".")[0]).join(", ") || "—"}</td>
+                    <td><Badge v={t.status} /></td><td>{usd(t.actual_cost)}</td>
+                    <td>{t.result && <details><summary>Kết quả ({t.result_source})</summary><pre className="out">{t.result}</pre></details>}</td></tr>
+                ))}</tbody></table></div>
+            </div>
+          )}
+        </Async>
+      )}
+    </>
+  );
+}
