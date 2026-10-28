@@ -132,7 +132,8 @@ class ClaudeCli(_CliProvider):
         except Exception:  # noqa: BLE001
             logged = rc == 0 and "not logged in" not in st.lower()
         if not logged:
-            return False, f"{ver}: chưa đăng nhập. Chạy 'claude' trong cửa sổ lệnh và đăng nhập."
+            return False, (f"{ver}: chưa đăng nhập. Chạy 'claude' trong cửa sổ lệnh và đăng nhập. "
+                           f"[claude auth status trả về: {' '.join(st.split())[:200] or '(trống)'}]")
         return True, f"{ver}: đã đăng nhập (gói thuê bao)."
 
     def _complete(self, system, prompt, model, timeout) -> ProviderResult:
