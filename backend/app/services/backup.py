@@ -51,3 +51,34 @@ def needs_daily_backup(data_dir: Path) -> bool:
     if not items:
         return True
     return datetime.fromisoformat(items[0]["created"]) < datetime.now() - timedelta(hours=24)
+
+
+def restore_backup(engine: Engine, data_dir: Path, name: str) -> dict:
+    """Khôi phục DB đang chạy từ một bản sao lưu. Luôn tạo bản an toàn của trạng thái hiện tại trước."""
+    if "/" in name or "\\" in name or not (name.startswith("mrk-") and name.endswith(".db")):
+        raise EngineError(400, "Tên bản sao lưu không hợp lệ.")
+    src_path = backup_dir(data_dir) / name
+    if not src_path.is_file():
+        raise EngineError(404, "Không tìm thấy bản sao lưu.")
+    live = _db_path(engine)
+    try:
+        chk = sqlite3.connect(f"file:{src_path.as_posix()}?mode=ro", uri=True)
+        try:
+            ok = chk.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+            has = chk.execute("SELECT 1 FROM sqlite_master WHERE name='alembic_version'").fetchone() is not None
+        finally:
+            chk.close()
+    except sqlite3.DatabaseError:
+        ok = has = False
+    if not (ok and has):
+        raise EngineError(422, "Bản sao lưu bị hỏng hoặc không phải DB của MrK Studio.")
+    safety = create_backup(engine, data_dir)  # cho phép hoàn tác việc khôi phục
+    src = sqlite3.connect(f"file:{src_path.as_posix()}?mode=ro", uri=True)
+    dst = sqlite3.connect(live, timeout=30)
+    try:
+        src.backup(dst)
+    finally:
+        dst.close()
+        src.close()
+    engine.dispose()
+    return {"restored": name, "safety_backup": safety["name"]}

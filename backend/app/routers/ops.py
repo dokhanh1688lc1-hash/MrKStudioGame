@@ -253,3 +253,16 @@ def make_backup(request: Request, user: Principal = Depends(require("owner")), s
     audit(s, user.username, "backup_created", "system", "", res["name"])
     s.commit()
     return res
+
+
+@router.post("/system/backups/{name}/restore")
+def restore_backup(name: str, request: Request, user: Principal = Depends(require("owner"))):
+    """Khôi phục dữ liệu từ bản sao lưu (chỉ owner). Bản trạng thái hiện tại được sao lưu trước."""
+    try:
+        res = bk.restore_backup(request.app.state.engine, request.app.state.settings.data_dir, name)
+    except EngineError as e:
+        raise HTTPException(e.status, e.message)
+    with Session(request.app.state.engine) as s2:
+        audit(s2, user.username, "backup_restored", "system", "", f"{name} (an toàn: {res['safety_backup']})")
+        s2.commit()
+    return res

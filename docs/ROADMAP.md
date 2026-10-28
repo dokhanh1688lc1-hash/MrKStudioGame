@@ -12,7 +12,7 @@
 | Dashboard tiếng Việt: 11 trang (kể cả Văn phòng studio) / 25 theo đặc tả | Partially Implemented |
 | Alembic migrations (baseline + stamp DB cũ + test không lệch model) | Implemented |
 | Đánh giá chéo 2 provider, giới hạn số lần gọi/phút | Not Implemented |
-| Sao lưu SQLite: thủ công + tự động (khởi động/24h, trước migrate), giữ 14 bản | Implemented (khôi phục vẫn thủ công, chưa kiểm thử PostgreSQL) |
+| Sao lưu SQLite: thủ công + tự động (khởi động/24h, trước migrate), giữ 14 bản | Implemented (có nút khôi phục cho owner; chưa kiểm thử PostgreSQL) |
 
 ## Phase 2 — Phòng ban AI (đang làm)
 | Hạng mục | Trạng thái |

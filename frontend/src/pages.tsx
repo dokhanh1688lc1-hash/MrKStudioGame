@@ -568,12 +568,12 @@ export function Settings({ role }: Role) {
       {role === "owner" && (
         <div className="card">
           <b>Sao lưu database</b>
-          <p className="muted">Tự động sao lưu khi khởi động (tối đa 1 lần/24 giờ) và trước mỗi lần nâng cấp schema; giữ 14 bản mới nhất trong thư mục <code>data\backups</code>. Khôi phục: tắt ứng dụng, chép đè file <code>data\mrk_studio.db</code> bằng một bản sao lưu.</p>
+          <p className="muted">Tự động sao lưu khi khởi động (tối đa 1 lần/24 giờ) và trước mỗi lần nâng cấp schema; giữ 14 bản mới nhất trong thư mục <code>data\backups</code>. Khôi phục: bấm “Khôi phục” ở bản mong muốn (chỉ owner); trạng thái hiện tại luôn được sao lưu trước nên có thể quay lại.</p>
           <button className="btn" disabled={busy} onClick={() => run(() => api("/system/backups", { method: "POST" }), "Đã tạo bản sao lưu.").then(backups.reload)}>Sao lưu ngay</button>
           <Async loading={backups.loading} error={backups.error}>
             {backups.data?.length ? (
               <div className="tablewrap"><table><thead><tr><th>Tệp</th><th>Thời gian</th><th>Dung lượng</th></tr></thead>
-                <tbody>{backups.data.map((b) => <tr key={b.name}><td>{b.name}</td><td>{b.created}</td><td>{Math.round(b.size / 1024)} KB</td></tr>)}</tbody></table></div>
+                <tbody>{backups.data.map((b) => <tr key={b.name}><td>{b.name}</td><td>{b.created}</td><td>{Math.round(b.size / 1024)} KB</td><td><button className="btn ghost" disabled={busy} onClick={() => run(() => api(`/system/backups/${b.name}/restore`, { method: "POST" }), "Đã khôi phục dữ liệu. Bản trạng thái trước đó được lưu thành một bản sao lưu mới.", "Khôi phục dữ liệu từ bản này? Mọi thay đổi sau thời điểm sao lưu sẽ mất (trạng thái hiện tại vẫn được lưu thành một bản sao lưu để quay lại).").then(backups.reload)}>Khôi phục</button></td></tr>)}</tbody></table></div>
             ) : <Empty text="Chưa có bản sao lưu." />}
           </Async>
         </div>
