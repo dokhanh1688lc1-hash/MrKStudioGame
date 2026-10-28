@@ -43,7 +43,7 @@ class Settings:
         load_dotenv(ROOT / ".env")
         e = os.environ
         return cls(
-            database_url=e.get("DATABASE_URL", cls.database_url),
+            database_url=_abs_sqlite(e.get("DATABASE_URL", cls.database_url)),
             secret_key=e.get("SECRET_KEY", ""),
             admin_username=e.get("ADMIN_USERNAME", "owner"),
             admin_password=e.get("ADMIN_PASSWORD", ""),
@@ -68,6 +68,18 @@ class Settings:
             self.secret_key = secrets.token_urlsafe(48)
             f.write_text(self.secret_key)
         return self.secret_key
+
+
+def _abs_sqlite(url: str) -> str:
+    """Đường dẫn SQLite tương đối được tính từ thư mục gốc dự án, không phụ thuộc nơi chạy."""
+    pre = "sqlite:///"
+    if url.startswith(pre) and not url.startswith("sqlite:////") and ":memory:" not in url:
+        rel = url[len(pre):]
+        if not (len(rel) > 1 and rel[1] == ":"):  # ổ đĩa Windows, vd C:\...
+            path = (ROOT / rel).resolve()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            return pre + path.as_posix()
+    return url
 
 
 def _real_key(v: str) -> str:

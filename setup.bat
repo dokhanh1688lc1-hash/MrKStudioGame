@@ -11,7 +11,9 @@ call npm run build || goto :err
 cd ..
 echo.
 echo Xong. Chay run.bat de khoi dong. Nho dien API key trong file .env (khong bat buoc).
+pause
 exit /b 0
 :err
 echo LOI: kiem tra Python 3.11+ va Node.js 18+ da duoc cai.
+pause
 exit /b 1
