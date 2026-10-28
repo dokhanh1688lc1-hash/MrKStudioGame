@@ -14,6 +14,8 @@ from ..deps import Principal, current_user, get_db, require
 from ..models import Agent, Department, Project, Task
 from ..schemas import AgentOut, AgentPatch, DepartmentOut, DepartmentPatch, ProjectIn, ProjectOut, ProjectPatch
 from ..services.common import EngineError, audit, slugify
+from ..db import utcnow
+from ..services import sources as src
 from ..services import workspace as wsvc
 
 router = APIRouter(prefix="/api", tags=["projects"])
@@ -149,10 +151,102 @@ async def upload_files(pid: int, request: Request, files: list[UploadFile] = Fil
         res = wsvc.import_uploads(ws, uploads)
     except EngineError as e:
         raise HTTPException(e.status, e.message)
+    if not p.source_type:
+        p.source_type, p.source_synced_at = "zip", utcnow()
     audit(s, user.username, "project_files_imported", "project", p.id,
           f"{res['import']}: {res['files_saved']} tệp, bỏ qua {len(res['skipped'])}")
     s.commit()
     return res
+
+
+class GithubIn(BaseModel):
+    url: str = Field(min_length=10, max_length=300)
+    branch: str = Field(default="", max_length=100)
+
+
+class FolderIn(BaseModel):
+    path: str = Field(min_length=1, max_length=500)
+
+
+class RootsIn(BaseModel):
+    paths: list[str] = Field(max_length=20)
+
+
+def _record_source(s: Session, p: Project, user: Principal, kind: str, ref: str, branch: str, res: dict) -> dict:
+    p.source_type, p.source_ref, p.source_branch, p.source_synced_at = kind, ref, branch, utcnow()
+    extra = f", commit {res['commit'][:8]}" if res.get("commit") else ""
+    audit(s, user.username, f"project_import_{kind}", "project", p.id,
+          f"{ref}: {res['files_saved']} tệp, bỏ qua {len(res['skipped'])}{extra}")
+    s.commit()
+    return res
+
+
+def _guard_import(p: Project) -> None:
+    if p.status == "Archived":
+        raise HTTPException(409, "Dự án đã lưu trữ (Archived).")
+
+
+@router.post("/projects/{pid}/import/github", status_code=201)
+def import_github(pid: int, body: GithubIn, request: Request, user: Principal = Depends(require("manager")),
+                  s: Session = Depends(get_db)):
+    p, ws = _ws(request, s, pid)
+    _guard_import(p)
+    try:
+        res = src.import_github(ws, body.url, body.branch)
+    except EngineError as e:
+        raise HTTPException(e.status, e.message)
+    return _record_source(s, p, user, "github", res["source"], body.branch.strip(), res)
+
+
+@router.post("/projects/{pid}/import/folder", status_code=201)
+def import_folder(pid: int, body: FolderIn, request: Request, user: Principal = Depends(require("manager")),
+                  s: Session = Depends(get_db)):
+    p, ws = _ws(request, s, pid)
+    _guard_import(p)
+    try:
+        res = src.import_folder(s, ws, body.path)
+    except EngineError as e:
+        raise HTTPException(e.status, e.message)
+    return _record_source(s, p, user, "folder", res["source"], "", res)
+
+
+@router.post("/projects/{pid}/sync", status_code=201)
+def sync_source(pid: int, request: Request, user: Principal = Depends(require("manager")), s: Session = Depends(get_db)):
+    """Lấy lại bản mới nhất từ nguồn đã nhập (GitHub / thư mục). Tạo thư mục imports/ mới, không ghi đè bản cũ."""
+    p, ws = _ws(request, s, pid)
+    _guard_import(p)
+    if p.source_type not in ("github", "folder"):
+        raise HTTPException(409, "Dự án chưa liên kết GitHub hoặc thư mục trên máy.")
+    try:
+        res = (src.import_github(ws, p.source_ref, p.source_branch) if p.source_type == "github"
+               else src.import_folder(s, ws, p.source_ref))
+    except EngineError as e:
+        raise HTTPException(e.status, e.message)
+    return _record_source(s, p, user, p.source_type, p.source_ref, p.source_branch, res)
+
+
+@router.get("/system/import-roots")
+def get_import_roots(_: Principal = Depends(require("manager")), s: Session = Depends(get_db)):
+    return {"paths": src.get_roots(s)}
+
+
+@router.put("/system/import-roots")
+def put_import_roots(body: RootsIn, user: Principal = Depends(require("owner")), s: Session = Depends(get_db)):
+    try:
+        paths = src.set_roots(s, body.paths)
+    except EngineError as e:
+        raise HTTPException(e.status, e.message)
+    audit(s, user.username, "import_roots_changed", "system", "", "; ".join(paths))
+    s.commit()
+    return {"paths": paths}
+
+
+@router.get("/system/browse")
+def browse_folders(path: str = "", _: Principal = Depends(require("manager")), s: Session = Depends(get_db)):
+    try:
+        return src.browse(s, path)
+    except EngineError as e:
+        raise HTTPException(e.status, e.message)
 
 
 @router.get("/projects/{pid}/files")

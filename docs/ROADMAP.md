@@ -38,6 +38,7 @@
 |---|---|
 | Sửa thông tin dự án (tên, thể loại, nền tảng, thị trường, mô tả, trạng thái) | Implemented |
 | Tải mã nguồn lên workspace (.zip hoặc từng tệp), mỗi lần một thư mục `imports/` | Implemented |
+| Nhập dự án có sẵn từ GitHub (shallow clone bằng Git trên máy) hoặc từ thư mục trên máy (chỉ trong thư mục gốc chủ studio cho phép); “Cập nhật lại từ nguồn” | Implemented (GitHub thật chưa thử qua mạng; đã test lệnh git trên repo cục bộ) |
 | Xem cây tệp và nội dung tệp văn bản (che chuỗi giống khóa) | Implemented |
 | Nhiệm vụ “Phân tích & nâng cấp” bằng Game Development AI + lưu kết quả `.md` vào workspace | Implemented |
 | AI tự sửa trực tiếp tệp mã nguồn / áp dụng patch / chạy build | Not Implemented (cố ý: Phase 1–2 AI chỉ trả văn bản; bạn áp dụng thủ công) |

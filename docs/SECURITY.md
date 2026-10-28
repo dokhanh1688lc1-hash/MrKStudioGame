@@ -29,3 +29,9 @@ Giới hạn đã biết: token không thu hồi được trước hạn; chưa 
 
 ## Backup / khôi phục
 Ứng dụng tự sao lưu `data/mrk_studio.db` vào `data/backups/` (khi khởi động nếu bản mới nhất > 24 giờ; trước mỗi lần migrate; nút “Sao lưu ngay” ở Cài đặt), giữ 14 bản. Nên chép định kỳ thư mục `data/backups/` và `games/` ra ổ khác — bản sao lưu nằm cùng ổ đĩa không chống được hỏng ổ. Khôi phục: tắt ứng dụng, chép đè `data/mrk_studio.db` bằng một bản sao lưu. `data/secret.key` mất chỉ khiến người dùng phải đăng nhập lại.
+
+## Nhập dự án từ GitHub / thư mục máy
+- Luôn **sao chép** vào workspace `games/<id>-<tên>/imports/…`; không bao giờ ghi hoặc xóa trong thư mục gốc của bạn.
+- Thư mục máy: chỉ đọc được trong các **thư mục gốc được phép** (chủ studio khai báo ở Cài đặt; cấm cả ổ đĩa). Đường dẫn được giải thật (`resolve`) nên `..` và symlink thoát ra ngoài đều bị chặn. Lưu ý: khi mở ứng dụng ra internet, tài khoản `manager` đọc được mọi thứ trong các thư mục này — chỉ khai báo thư mục cần thiết.
+- GitHub: chỉ nhận `https://github.com/<chủ>/<repo>` (không `http`, `ssh`, `file`, host khác, user:pass trong URL); nhánh kiểm tra regex; git chạy không qua shell, có `--`, `GIT_TERMINAL_PROMPT=0`, timeout 240 giây, clone nông, không submodule. Repo riêng tư dùng đăng nhập git sẵn có trên máy; hệ thống không lưu token.
+- Bỏ qua `.git`, `node_modules`, symlink, tệp bí mật (`.env`, `*.pem`, `*.key`…); tối đa 5000 tệp / 300 MB mỗi lần nhập.

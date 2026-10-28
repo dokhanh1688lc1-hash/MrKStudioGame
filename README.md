@@ -29,7 +29,9 @@ Hệ thống chỉ dùng **Claude Code** và **Codex (ChatGPT)** đã cài và �
 
 Việc dùng tính vào hạn mức gói thuê bao của bạn, không tính USD theo token; dùng “Giới hạn lượt chạy” để không cạn hạn mức. Ứng dụng desktop ChatGPT/Claude không điều khiển được; chỉ hai công cụ dòng lệnh này.
 
-## Dự án đang làm dở (sửa / nâng cấp)
+## Dự án đang làm dở
+Vào **Dự án → Mã nguồn**: nhập dự án có sẵn từ **GitHub**, từ **thư mục trên máy** (chủ studio khai báo thư mục cho phép ở Cài đặt) hoặc tải .zip/tệp lên; bấm “Cập nhật lại từ nguồn” để lấy bản mới. Hệ thống chỉ SAO CHÉP, không sửa dự án gốc.
+ (sửa / nâng cấp)
 Trang **Dự án** → nút **Sửa** để đổi thông tin; nút **Mã nguồn** để tải lên dự án có sẵn (.zip tải từ Claude hoặc từng tệp),
 xem tệp, rồi tạo nhiệm vụ **Phân tích & nâng cấp** cho AI. AI trả báo cáo/đoạn mã đề xuất; hệ thống không tự sửa tệp của bạn.
 

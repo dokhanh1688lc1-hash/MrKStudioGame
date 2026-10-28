@@ -46,6 +46,10 @@ class Project(Base, Stamped):
     target_market: Mapped[str] = mapped_column(String(200), default="")
     status: Mapped[str] = mapped_column(String(32), default="Research")
     workspace_path: Mapped[str] = mapped_column(String(300), default="")
+    source_type: Mapped[str] = mapped_column(String(16), default="")      # "", zip, github, folder
+    source_ref: Mapped[str] = mapped_column(String(500), default="")      # URL repo hoặc đường dẫn thư mục
+    source_branch: Mapped[str] = mapped_column(String(100), default="")
+    source_synced_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     tasks: Mapped[list["Task"]] = relationship(back_populates="project")
     __table_args__ = (CheckConstraint(_in("status", PROJECT_STATUSES), name="ck_project_status"),)
 

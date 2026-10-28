@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, upload, useLoad, utc } from "./api";
+import { ImportRoots, SourcePanel } from "./Sources";
 import { Async, Badge, Empty, Field, Pager, useAction } from "./ui";
 
 type Role = { role: string };
@@ -119,12 +120,12 @@ export function Projects({ role }: Role) {
           <p><button className="btn" disabled={busy}>Lưu</button></p>
         </form>
       )}
-      {codeFor && <ProjectCode project={codeFor} role={role} onClose={() => setCodeFor(null)} />}
+      {codeFor && <ProjectCode project={codeFor} role={role} onClose={() => setCodeFor(null)} onChanged={async () => { list.reload(); try { setCodeFor(await api(`/projects/${codeFor.id}`)); } catch { /* giữ nguyên */ } }} />}
     </>
   );
 }
 
-function ProjectCode({ project, role, onClose }: { project: any; role: string; onClose: () => void }) {
+function ProjectCode({ project, role, onClose, onChanged }: { project: any; role: string; onClose: () => void; onChanged?: () => void }) {
   const [tick, setTick] = useState(0);
   const tree = useLoad<any>(`/projects/${project.id}/files`, [tick]);
   const [picked, setPicked] = useState<File[]>([]);
@@ -137,9 +138,10 @@ function ProjectCode({ project, role, onClose }: { project: any; role: string; o
     <div className="card">
       <div className="row tight"><b>Mã nguồn dự án: {project.name}</b><button className="btn ghost" onClick={onClose}>Đóng</button></div>
       {banner}
+      {canEdit(role) && project.status !== "Archived" && <SourcePanel project={project} role={role} onDone={() => { setTick((x) => x + 1); onChanged?.(); }} />}
       {canEdit(role) && project.status !== "Archived" && (
         <>
-          <div className="msg">Tải lên dự án đang làm (ví dụ tệp .zip tải về từ Claude, hoặc từng tệp .gd/.py/…). Mỗi lần tải tạo một thư mục <code>imports/</code> mới, không ghi đè bản cũ. Tệp bí mật (.env, khóa riêng), .git, node_modules và symlink bị bỏ qua. Tối đa 100 MB mỗi lần.</div>
+          <div className="msg">Hoặc tải lên dự án đang làm (ví dụ tệp .zip tải về từ Claude, hoặc từng tệp .gd/.py/…). Mỗi lần tải tạo một thư mục <code>imports/</code> mới, không ghi đè bản cũ. Tệp bí mật (.env, khóa riêng), .git, node_modules và symlink bị bỏ qua. Tối đa 100 MB mỗi lần.</div>
           <div className="row tight">
             <input type="file" multiple style={{ width: "auto" }} onChange={(e) => setPicked(Array.from(e.target.files || []))} />
             <button className="btn" disabled={busy || !picked.length} onClick={async () => {
@@ -535,6 +537,7 @@ export function Settings({ role }: Role) {
           </div>
         )}
       </Async>
+      {role === "owner" && <ImportRoots />}
       {role === "owner" && (
         <div className="card">
           <b>Sao lưu database</b>

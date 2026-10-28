@@ -59,6 +59,10 @@ class ProjectOut(ORM):
     target_market: str
     status: str
     workspace_path: str
+    source_type: str = ""
+    source_ref: str = ""
+    source_branch: str = ""
+    source_synced_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
