@@ -242,6 +242,7 @@ function Detail({ d, go }: { d: Dept; go: (p: string) => void }) {
 export function Office({ role, go }: { role: string; go: (p: string) => void }) {
   const [tick, setTick] = useState(0);
   const office = useLoad<Dept[]>("/office", [tick]);
+  const ceoBox = useLoad<{ pending: number }>("/ceo/inbox?limit=1", [tick]);
   const [sel, setSel] = useState<string>("");
   const [multi, setMulti] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
@@ -260,6 +261,7 @@ export function Office({ role, go }: { role: string; go: (p: string) => void }) 
       <div className="ofc-bar card">
         <span><b>{depts.length}</b> phòng ban · <b>{running}</b> nhiệm vụ đang chạy · <b>{waiting}</b> đang chờ duyệt/bị chặn</span>
         <span className="muted">Tự cập nhật mỗi 5 giây</span>
+        <button className="btn ghost" onClick={() => go("ceo")}>📥 Hộp thư CEO{ceoBox.data?.pending ? ` (${ceoBox.data.pending} chờ quyết định)` : ""}</button>
         {canEdit && (
           <span className="ofc-actions">
             <button className={`btn ${multi ? "" : "ghost"}`} onClick={() => { setMulti(!multi); setPicked([]); }}>

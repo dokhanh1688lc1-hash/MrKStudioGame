@@ -142,6 +142,19 @@ class FileChange(Base):
     __table_args__ = (CheckConstraint(_in("status", ["pending", "applied", "rejected", "reverted"]), name="ck_fchange_status"),)
 
 
+class CeoReview(Base):
+    """Quyết định của CEO (chủ studio) về kết quả một nhiệm vụ đã hoàn thành/thất bại."""
+    __tablename__ = "ceo_reviews"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"), unique=True)
+    decision: Mapped[str] = mapped_column(String(12))  # accepted|rework|forward|dismissed
+    note: Mapped[str] = mapped_column(Text, default="")
+    followup_task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), nullable=True)
+    decided_by: Mapped[str] = mapped_column(String(64), default="")
+    decided_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    __table_args__ = (CheckConstraint(_in("decision", ["accepted", "rework", "forward", "dismissed"]), name="ck_ceo_decision"),)
+
+
 class TaskDependency(Base):
     __tablename__ = "task_dependencies"
     task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"), primary_key=True)

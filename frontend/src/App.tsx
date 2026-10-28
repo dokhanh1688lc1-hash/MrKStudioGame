@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { api, getToken, setToken, useLoad } from "./api";
 import { Field, useAction } from "./ui";
+import { CeoInbox } from "./Ceo";
 import { Office } from "./Office";
 import { Agents, Approvals, Budgets, Dashboard, Logs, Pipeline, Projects, Providers, Settings, Tasks } from "./pages";
 
 const PAGES: [string, string][] = [
-  ["office", "Văn phòng studio"], ["dashboard", "CEO Dashboard"], ["projects", "Dự án"], ["pipeline", "Pipeline sản xuất"], ["tasks", "Task Center"], ["agents", "Phòng ban & Agent"],
+  ["office", "Văn phòng studio"], ["ceo", "Hộp thư CEO"], ["dashboard", "CEO Dashboard"], ["projects", "Dự án"], ["pipeline", "Pipeline sản xuất"], ["tasks", "Task Center"], ["agents", "Phòng ban & Agent"],
   ["providers", "AI Provider & Routing"], ["approvals", "Approval Center"], ["budgets", "Giới hạn lượt chạy"],
   ["logs", "Activity Logs"], ["settings", "Cài đặt & Bảo mật"],
 ];
@@ -34,6 +35,9 @@ export default function App() {
   const [page, setPage] = useState(() => location.hash.slice(1) || "office");
   useEffect(() => { location.hash = page; }, [page]);
   const me = useLoad<{ username: string; role: string }>(authed ? "/auth/me" : null);
+  const [beat, setBeat] = useState(0);
+  useEffect(() => { const t = setInterval(() => setBeat((x) => x + 1), 10000); return () => clearInterval(t); }, []);
+  const ceoBox = useLoad<{ pending: number }>(authed ? "/ceo/inbox?limit=1" : null, [page, beat]);
   const state = useLoad<{ emergency_stop: boolean }>(authed ? "/system/state" : null, [page]);
 
   if (!authed) return <Login onDone={() => setAuthed(true)} />;
@@ -44,7 +48,7 @@ export default function App() {
       <nav className="side">
         <h1>🎮 MrK Studio Game</h1>
         {PAGES.map(([k, label]) => (
-          <button key={k} className={`nav ${page === k ? "on" : ""}`} onClick={() => go(k)}>{label}</button>
+          <button key={k} className={`nav ${page === k ? "on" : ""}`} onClick={() => go(k)}>{label}{k === "ceo" && ceoBox.data?.pending ? <span className="navbadge">{ceoBox.data.pending}</span> : null}</button>
         ))}
         <div className="soon">Chưa triển khai (Phase 2+)</div>
         <ul className="soonlist">{SOON.map((s) => <li key={s}>{s}</li>)}</ul>
@@ -55,6 +59,7 @@ export default function App() {
       </nav>
       <main>
         {state.data?.emergency_stop && <div className="stop">⛔ EMERGENCY STOP đang bật — mọi nhiệm vụ mới bị chặn. Tắt trong “Cài đặt & Bảo mật”.</div>}
+        {page === "ceo" && <CeoInbox role={role} go={go} />}
         {page === "office" && <Office role={role} go={go} />}
         {page === "dashboard" && <Dashboard go={go} />}
         {page === "projects" && <Projects role={role} />}

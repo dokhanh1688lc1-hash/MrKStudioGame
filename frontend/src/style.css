@@ -99,3 +99,4 @@ pre.out.diff { font: 12.5px/1.45 ui-monospace, Consolas, monospace; white-space:
 .diff .ddel { background: color-mix(in srgb, var(--bad) 22%, transparent); display: block; }
 .diff .dhunk { color: var(--accent); display: block; }
 .badge.bad { background: color-mix(in srgb, var(--bad) 25%, transparent); color: var(--bad); padding: 1px 8px; border-radius: 999px; font-size: 12px; }
+.navbadge { float: right; background: var(--bad); color: #fff; border-radius: 999px; padding: 0 8px; font-size: 12px; line-height: 20px; }

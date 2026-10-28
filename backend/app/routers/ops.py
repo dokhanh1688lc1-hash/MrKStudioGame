@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..db import utcnow
 from ..deps import Principal, current_user, get_db, require
-from ..models import (Agent, Approval, AuditLog, Budget, Department, Project, ProviderConfig, Task, UsageRecord)
+from ..models import (Agent, Approval, CeoReview, AuditLog, Budget, Department, Project, ProviderConfig, Task, UsageRecord)
 from ..schemas import (ApprovalIn, ApprovalOut, AuditOut, BudgetIn, BudgetOut, DecisionIn, ProviderOut,
                        ProviderPatch, SettingsPatch, StopIn, UsageOut)
 from ..services.budget import spent
@@ -208,6 +208,7 @@ def dashboard(request: Request, _: Principal = Depends(current_user), s: Session
     return {
         "projects_total": sum(projects.values()), "projects_by_status": projects,
         "tasks_total": sum(by_status.values()), "tasks_by_status": by_status,
+        "ceo_pending": s.scalar(select(func.count()).select_from(Task).outerjoin(CeoReview, CeoReview.task_id == Task.id).where(Task.status.in_(("Completed", "Failed")), Task.department_key != "ceo", CeoReview.id.is_(None))),
         "pending_approvals": s.scalar(select(func.count()).select_from(Approval).where(Approval.status == "pending")),
         "runs_today": spent(s, "studio", "", "daily"), "runs_month": spent(s, "studio", "", "monthly"),
         "providers": [{"name": p.name, "configured": p.configured, "enabled": p.enabled,

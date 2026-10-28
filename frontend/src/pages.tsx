@@ -21,6 +21,8 @@ export function Dashboard({ go }: { go: (p: string) => void }) {
               <div className="stat"><b>{d.data.tasks_total}</b><span>Nhiệm vụ</span></div>
               <div className="stat" style={{ cursor: "pointer" }} onClick={() => go("approvals")}>
                 <b>{d.data.pending_approvals}</b><span>Chờ phê duyệt</span></div>
+              <div className="stat" style={{ cursor: "pointer" }} onClick={() => go("ceo")}>
+                <b>{d.data.ceo_pending}</b><span>Kết quả chờ CEO quyết định</span></div>
               <div className="stat"><b>{d.data.runs_today}</b><span>Lượt chạy AI hôm nay</span></div>
               <div className="stat"><b>{d.data.runs_month}</b><span>Lượt chạy AI tháng này</span></div>
             </div>
