@@ -80,7 +80,7 @@ def fake(tmp_path, monkeypatch):
     return FakeCLIs(tmp_path, monkeypatch)
 
 
-def make_client(tmp_path, fake=None, *, cli=True, enable=True):
+def make_client(tmp_path, fake=None, *, cli=True, enable=True, auto_run=False):
     """cli=True: có claude/codex giả trên máy; enable=True: bật hai provider CLI (mặc định chúng tắt)."""
     if fake is not None:
         fake.present(cli)
@@ -90,6 +90,8 @@ def make_client(tmp_path, fake=None, *, cli=True, enable=True):
     c = TestClient(app)
     tok = c.post("/api/auth/login", json={"username": "owner", "password": "Passw0rd!x"}).json()["token"]
     c.headers["Authorization"] = f"Bearer {tok}"
+    if auto_run is not None:  # mặc định test tắt tự chạy để kiểm soát từng bước; test auto_run bật riêng
+        assert c.patch("/api/system/settings", json={"auto_run": auto_run}).status_code == 200
     if cli and enable:
         for n in ("claude_cli", "codex_cli"):
             assert c.patch(f"/api/providers/{n}", json={"enabled": True}).status_code == 200

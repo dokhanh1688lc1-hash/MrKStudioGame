@@ -159,9 +159,43 @@ class Orchestrator:
         s.expire_all()
         return s.scalar(select(Task.status).where(Task.id == task_id))
 
+    # ---------- tự chạy khi được giao ----------
+    def auto_start(self, task_ids: list[int], actor: str) -> dict[int, str]:
+        """Tự chạy các nhiệm vụ vừa được giao nếu bật 'auto_run' và đã đủ điều kiện (phụ thuộc xong).
+        Vẫn tôn trọng phê duyệt, giới hạn lượt, Emergency Stop, dự án tạm dừng. Trả về {id: lý do chưa chạy}."""
+        out: dict[int, str] = {}
+        with self.sf() as s:
+            if not get_bool(s, "auto_run"):
+                return out
+        for tid in task_ids:
+            with self.sf() as s:
+                t = s.get(Task, tid)
+                if not t or t.status not in ("Assigned", "Blocked"):
+                    continue
+                if any(s.get(Task, d.depends_on_id).status != "Completed"
+                       for d in s.scalars(select(TaskDependency).where(TaskDependency.task_id == tid))):
+                    continue  # còn chờ phụ thuộc: sẽ tự chạy khi nhiệm vụ trước hoàn thành
+            try:
+                chain = self.prepare_run(tid, actor)
+            except EngineError as e:
+                out[tid] = e.message
+                continue
+            self.run_async(tid, chain, actor)
+        return out
+
+    def _kick_dependents(self, task_id: int, actor: str) -> None:
+        with self.sf() as s:
+            t = s.get(Task, task_id)
+            if not t or t.status != "Completed":
+                return
+            ids = [d.task_id for d in s.scalars(select(TaskDependency).where(TaskDependency.depends_on_id == task_id))]
+        if ids:
+            self.auto_start(ids, "auto")
+
     def execute_run(self, task_id: int, chain: list[tuple[str, str]], actor: str) -> None:
         try:
             self._execute(task_id, chain, actor)
+            self._kick_dependents(task_id, actor)
         except Exception as e:  # không để nhiệm vụ kẹt ở Running
             with self.sf() as s:
                 t = s.get(Task, task_id)

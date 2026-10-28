@@ -280,3 +280,4 @@ class StopIn(BaseModel):
 
 class SettingsPatch(BaseModel):
     fallback_enabled: bool | None = None
+    auto_run: bool | None = None

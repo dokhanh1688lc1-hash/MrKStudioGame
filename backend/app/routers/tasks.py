@@ -43,7 +43,7 @@ def list_tasks(project_id: int | None = None, status: str = "", department: str 
 
 
 @router.post("", response_model=TaskDetail, status_code=201)
-def create_task(body: TaskIn, user: Principal = Depends(require("manager")), s: Session = Depends(get_db)):
+def create_task(body: TaskIn, request: Request, user: Principal = Depends(require("manager")), s: Session = Depends(get_db)):
     p = s.get(Project, body.project_id)
     if not p:
         raise HTTPException(404, "Không tìm thấy dự án.")
@@ -67,7 +67,9 @@ def create_task(body: TaskIn, user: Principal = Depends(require("manager")), s: 
         s.add(TaskDependency(task_id=t.id, depends_on_id=dep_id))
     audit(s, user.username, "task_created", "task", t.id, t.title)
     s.commit()
-    return _detail(s, t)
+    request.app.state.orch.auto_start([t.id], user.username)
+    s.expire_all()
+    return _detail(s, s.get(Task, t.id))
 
 
 @router.post("/bulk", status_code=201)
@@ -108,8 +110,8 @@ def create_bulk(body: BulkTaskIn, request: Request, user: Principal = Depends(re
     s.commit()
     ids = [t.id for t in created]
     started, errors = [], {}
+    orch = request.app.state.orch
     if body.run_now:
-        orch = request.app.state.orch
         for tid in ids:
             try:
                 chain = orch.prepare_run(tid, user.username)
@@ -117,6 +119,10 @@ def create_bulk(body: BulkTaskIn, request: Request, user: Principal = Depends(re
                 started.append(tid)
             except EngineError as e:
                 errors[tid] = e.message
+    else:
+        errors = orch.auto_start(ids, user.username)  # tự chạy khi bật 'auto_run'
+        s.expire_all()
+        started = [i for i in ids if i not in errors and s.get(Task, i).status != "Assigned"]
     return {"task_ids": ids, "started": started, "run_errors": errors}
 
 
@@ -125,7 +131,7 @@ CLI_NAME = {"claude_cli": "Claude Code", "codex_cli": "Codex (ChatGPT)"}
 
 
 @router.post("/{tid}/cross-review", status_code=201)
-def cross_review(tid: int, user: Principal = Depends(require("manager")), s: Session = Depends(get_db)):
+def cross_review(tid: int, request: Request, user: Principal = Depends(require("manager")), s: Session = Depends(get_db)):
     """Đánh giá chéo: nhờ AI còn lại (Claude ↔ Codex) kiểm tra độc lập kết quả của một nhiệm vụ đã hoàn thành."""
     t = s.get(Task, tid)
     if not t:
@@ -158,7 +164,8 @@ def cross_review(tid: int, user: Principal = Depends(require("manager")), s: Ses
     s.add(TaskDependency(task_id=r.id, depends_on_id=t.id))
     audit(s, user.username, "cross_review_created", "task", t.id, f"→ #{r.id} bằng {reviewer}")
     s.commit()
-    return {"task_id": r.id, "reviewer": reviewer, "reviewer_name": CLI_NAME[reviewer]}
+    err = request.app.state.orch.auto_start([r.id], user.username)
+    return {"task_id": r.id, "auto_started": r.id not in err, "reviewer": reviewer, "reviewer_name": CLI_NAME[reviewer]}
 
 
 def _pct(done: int, total: int) -> int:
@@ -331,13 +338,15 @@ def get_pipeline(pid: int, _: Principal = Depends(current_user), s: Session = De
 
 
 @pipe.post("/projects/{pid}/pipeline", status_code=201)
-def make_pipeline(pid: int, body: PipelineIn, user: Principal = Depends(require("manager")),
+def make_pipeline(pid: int, body: PipelineIn, request: Request, user: Principal = Depends(require("manager")),
                   s: Session = Depends(get_db)):
     try:
         tasks = create_pipeline(s, pid, body.brief.strip(), user.username)
     except EngineError as e:
         raise HTTPException(e.status, e.message)
-    return [_detail(s, t) for t in tasks]
+    request.app.state.orch.auto_start([t.id for t in tasks], user.username)  # bước đầu tự chạy, các bước sau chạy khi bước trước xong
+    s.expire_all()
+    return [_detail(s, s.get(Task, t.id)) for t in tasks]
 
 
 @pipe.post("/projects/{pid}/pipeline/run-ready")

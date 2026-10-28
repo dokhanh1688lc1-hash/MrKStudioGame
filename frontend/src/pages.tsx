@@ -617,6 +617,8 @@ export function Settings({ role }: Role) {
             ) : <Badge v={st.data.emergency_stop ? "ĐANG BẬT" : "Tắt"} />}
             <hr style={{ borderColor: "var(--line)" }} />
             <b>Chính sách</b>
+            <p><label style={{ margin: 0 }}><input type="checkbox" style={{ width: "auto" }} disabled={role !== "owner"} checked={st.data.auto_run !== false}
+              onChange={(e) => run(() => api("/system/settings", { method: "PATCH", body: { auto_run: e.target.checked } }), "Đã cập nhật.").then(st.reload)} /> Tự động chạy ngay khi được giao việc (vẫn tôn trọng phê duyệt, giới hạn lượt chạy và Emergency Stop)</label></p>
             <p><label style={{ margin: 0 }}><input type="checkbox" style={{ width: "auto" }} disabled={role !== "owner"} checked={st.data.fallback_enabled}
               onChange={(e) => run(() => api("/system/settings", { method: "PATCH", body: { fallback_enabled: e.target.checked } }), "Đã cập nhật.").then(st.reload)} /> Cho phép tự chuyển sang provider khác khi provider chính lỗi</label></p>
           </div>

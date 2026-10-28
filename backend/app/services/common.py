@@ -21,6 +21,7 @@ def audit(s: Session, actor: str, action: str, entity: str = "", entity_id: str 
 
 DEFAULT_SETTINGS = {
     "emergency_stop": "0",
+    "auto_run": "1",                   # tự chạy nhiệm vụ ngay khi được giao
     "fallback_enabled": "0",           # cho phép chuyển sang provider ngoài còn lại khi lỗi
 }
 

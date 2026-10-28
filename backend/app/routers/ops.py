@@ -96,7 +96,7 @@ def create_approval(body: ApprovalIn, user: Principal = Depends(require("manager
 
 
 @router.post("/approvals/{aid}/decision", response_model=ApprovalOut)
-def decide(aid: int, body: DecisionIn, user: Principal = Depends(require("owner")), s: Session = Depends(get_db)):
+def decide(aid: int, body: DecisionIn, request: Request, user: Principal = Depends(require("owner")), s: Session = Depends(get_db)):
     a = s.get(Approval, aid)
     if not a:
         raise HTTPException(404, "Không tìm thấy yêu cầu phê duyệt.")
@@ -112,6 +112,9 @@ def decide(aid: int, body: DecisionIn, user: Principal = Depends(require("owner"
                 t.error, t.finished_at = "Bị từ chối phê duyệt.", utcnow()
     audit(s, user.username, f"approval_{a.status}", "approval", a.id, a.title)
     s.commit()
+    if body.approve and a.task_id:  # đã duyệt → tự chạy (nếu bật auto_run)
+        request.app.state.orch.auto_start([a.task_id], user.username)
+        s.expire_all()
     return a
 
 
@@ -174,7 +177,8 @@ def audit_logs(action: str = "", limit: int = Query(50, ge=1, le=200), offset: i
 
 
 def _system_state(s: Session) -> dict:
-    return {"emergency_stop": get_bool(s, "emergency_stop"), "fallback_enabled": get_bool(s, "fallback_enabled")}
+    return {"emergency_stop": get_bool(s, "emergency_stop"), "fallback_enabled": get_bool(s, "fallback_enabled"),
+            "auto_run": get_bool(s, "auto_run")}
 
 
 @router.get("/system/state")
@@ -195,6 +199,8 @@ def patch_settings(body: SettingsPatch, user: Principal = Depends(require("owner
     d = body.model_dump(exclude_unset=True)
     if "fallback_enabled" in d and d["fallback_enabled"] is not None:
         set_setting(s, "fallback_enabled", "1" if d["fallback_enabled"] else "0")
+    if "auto_run" in d and d["auto_run"] is not None:
+        set_setting(s, "auto_run", "1" if d["auto_run"] else "0")
     audit(s, user.username, "settings_changed", "system", "", ", ".join(d))
     s.commit()
     return _system_state(s)

@@ -76,7 +76,7 @@ def _agent(s: Session, dept_key: str) -> tuple[Department, Agent]:
 
 
 @router.post("/tasks/{tid}/decide", status_code=201)
-def decide(tid: int, body: DecideIn, user: Principal = Depends(require("owner")), s: Session = Depends(get_db)):
+def decide(tid: int, body: DecideIn, request: Request, user: Principal = Depends(require("owner")), s: Session = Depends(get_db)):
     t = s.get(Task, tid)
     if not t or t.status not in REPORTABLE or t.department_key == "ceo":
         raise HTTPException(404, "Không có nhiệm vụ này trong hộp thư CEO.")
@@ -121,11 +121,13 @@ def decide(tid: int, body: DecideIn, user: Principal = Depends(require("owner"))
     s.add(r)
     audit(s, user.username, f"ceo_{body.decision}", "task", t.id, f"{t.title}" + (f" → #{follow.id}" if follow else ""))
     s.commit()
+    if follow:  # việc chuyển tiếp/sửa lại cũng tự chạy khi bật auto_run
+        request.app.state.orch.auto_start([follow.id], user.username)
     return {"decision": r.decision, "followup_task_id": r.followup_task_id, "lesson_suggested": bool(suggested)}
 
 
 @router.post("/digest", status_code=201)
-def digest(user: Principal = Depends(require("manager")), s: Session = Depends(get_db)):
+def digest(request: Request, user: Principal = Depends(require("manager")), s: Session = Depends(get_db)):
     """Tạo nhiệm vụ cho CEO AI: tổng hợp các kết quả chưa quyết định và đề xuất quyết định cho từng mục."""
     if get_bool(s, "emergency_stop"):
         raise HTTPException(423, "Emergency Stop đang bật.")
@@ -156,5 +158,6 @@ def digest(user: Principal = Depends(require("manager")), s: Session = Depends(g
     s.flush()
     audit(s, user.username, "ceo_digest_created", "task", task.id, f"{len(same)} kết quả")
     s.commit()
+    request.app.state.orch.auto_start([task.id], user.username)
     skipped = len(rows) - len(same)
     return {"task_id": task.id, "items": len(same), "skipped_other_projects": skipped}
