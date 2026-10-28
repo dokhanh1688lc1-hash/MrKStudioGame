@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, upload, useLoad, utc } from "./api";
 import { ChangesPanel } from "./Changes";
 import { ImportRoots, SourcePanel } from "./Sources";
@@ -194,7 +194,12 @@ const TSTAT = ["Pending", "Planned", "Assigned", "Running", "Blocked", "Awaiting
 export function Tasks({ role }: Role) {
   const [status, setStatus] = useState(""); const [q, setQ] = useState(""); const [offset, setOffset] = useState(0);
   const [tick, setTick] = useState(0);
-  const list = useLoad<{ items: any[]; total: number }>(`/tasks?limit=10&offset=${offset}&status=${status}&q=${encodeURIComponent(q)}`, [tick]);
+  const [projF, setProjF] = useState(""); const [deptF, setDeptF] = useState("");
+  const [picked, setPicked] = useState<number[]>([]);
+  const [edit, setEdit] = useState<any | null>(null);
+  useEffect(() => { const h = setInterval(() => setTick((x) => x + 1), 6000); return () => clearInterval(h); }, []);  // tự cập nhật tiến độ
+  const list = useLoad<{ items: any[]; total: number }>(`/tasks?limit=10&offset=${offset}&status=${status}&q=${encodeURIComponent(q)}${projF ? `&project_id=${projF}` : ""}&department=${deptF}`, [tick]);
+  const prog = useLoad<any>(`/tasks/progress${projF ? `?project_id=${projF}` : ""}`, [tick]);
   const projects = useLoad<{ items: any[] }>("/projects?limit=100");
   const depts = useLoad<any[]>("/departments");
   const tpls = useLoad<Record<string, any[]>>("/tasks/templates/all");
@@ -225,6 +230,21 @@ export function Tasks({ role }: Role) {
     <>
       <h2>Task Center</h2>
       {banner}
+      <div className="card">
+        <b>Tiến độ công việc</b>{" "}
+        <span className="muted">{prog.data ? `${prog.data.done}/${prog.data.total} nhiệm vụ hoàn thành (${prog.data.pct}%) · bỏ qua nhiệm vụ đã hủy` : ""}</span>
+        {prog.data && prog.data.total > 0 ? (
+          <>
+            <div className="bar big"><i style={{ width: `${prog.data.pct}%` }} /></div>
+            <p className="row tight">{Object.entries(prog.data.by_status).map(([k, n]) => <span key={k}><Badge v={k} /> {String(n)}</span>)}</p>
+            <div className="tablewrap"><table>
+              <thead><tr><th>{projF ? "Phòng ban" : "Dự án"}</th><th style={{ width: "40%" }}>Tiến độ</th><th>Xong</th><th>Đang chạy</th><th>Lỗi</th></tr></thead>
+              <tbody>{(projF ? prog.data.departments : prog.data.projects).map((x: any) => (
+                <tr key={x.key ?? x.id}><td>{x.name}</td><td><div className="bar"><i style={{ width: `${x.pct}%` }} /></div></td>
+                  <td>{x.done}/{x.total} ({x.pct}%)</td><td>{x.running}</td><td>{x.failed}</td></tr>))}</tbody></table></div>
+          </>
+        ) : <Empty text="Chưa có nhiệm vụ để tính tiến độ." />}
+      </div>
       {canEdit(role) && (
         <form className="card" onSubmit={async (e) => {
           e.preventDefault();
@@ -299,22 +319,36 @@ export function Tasks({ role }: Role) {
       <div className="card">
         <div className="row">
           <Field label="Tìm kiếm"><input value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} /></Field>
+          <Field label="Dự án"><select value={projF} onChange={(e) => { setProjF(e.target.value); setOffset(0); setPicked([]); }}>
+            <option value="">Tất cả</option>{projects.data?.items.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+          <Field label="Phòng ban"><select value={deptF} onChange={(e) => { setDeptF(e.target.value); setOffset(0); setPicked([]); }}>
+            <option value="">Tất cả</option>{depts.data?.map((d) => <option key={d.key} value={d.key}>{d.name}</option>)}</select></Field>
           <Field label="Trạng thái"><select value={status} onChange={(e) => { setStatus(e.target.value); setOffset(0); }}>
             <option value="">Tất cả</option>{TSTAT.map((s) => <option key={s}>{s}</option>)}</select></Field>
           <button className="btn ghost" style={{ flex: "0 0 auto" }} onClick={refresh}>Làm mới</button>
         </div>
+        {canEdit(role) && picked.length > 0 && (
+          <p className="row tight"><b>Đã chọn {picked.length}</b>
+            <button className="btn danger" disabled={busy} onClick={async () => {
+              await run(() => api("/tasks/bulk-delete", { method: "POST", body: { ids: picked } }), `Đã xóa ${picked.length} nhiệm vụ.`, `Xóa vĩnh viễn ${picked.length} nhiệm vụ đã chọn (kèm lịch sử chạy)? Không thể hoàn tác.`);
+              setPicked([]); setSel(null); refresh();
+            }}>Xóa các nhiệm vụ đã chọn</button>
+            <button className="btn ghost" onClick={() => setPicked([])}>Bỏ chọn</button></p>)}
         <Async loading={list.loading} error={list.error}>
           {list.data?.items.length ? (
             <div className="tablewrap"><table>
-              <thead><tr><th>ID</th><th>Tiêu đề</th><th>Phòng ban</th><th>Trạng thái</th><th></th></tr></thead>
+              <thead><tr><th>{canEdit(role) && <input type="checkbox" style={{ width: "auto" }} title="Chọn tất cả trên trang" checked={list.data.items.length > 0 && list.data.items.every((t) => picked.includes(t.id))}
+                onChange={(e) => setPicked(e.target.checked ? Array.from(new Set([...picked, ...list.data!.items.map((t) => t.id)])) : picked.filter((i) => !list.data!.items.some((t) => t.id === i)))} />}</th><th>ID</th><th>Tiêu đề</th><th>Phòng ban</th><th>Trạng thái</th><th></th></tr></thead>
               <tbody>{list.data.items.map((t) => (
-                <tr key={t.id}><td>{t.id}</td><td>{t.title}</td><td>{t.department_key}</td><td><Badge v={t.status} /></td>
+                <tr key={t.id}><td>{canEdit(role) && <input type="checkbox" style={{ width: "auto" }} checked={picked.includes(t.id)} onChange={(e) => setPicked(e.target.checked ? [...picked, t.id] : picked.filter((i) => i !== t.id))} />}</td><td>{t.id}</td><td>{t.title}</td><td>{t.department_key}</td><td><Badge v={t.status} /></td>
                   <td className="row tight">
                     <button className="btn ghost" onClick={() => setSel(t.id)}>Chi tiết</button>
                     {canEdit(role) && ["Pending", "Planned", "Assigned", "Blocked", "Failed"].includes(t.status) &&
                       <button className="btn" disabled={busy} onClick={async () => { await run(() => api(`/tasks/${t.id}/run`, { method: "POST" }), "Đã bắt đầu chạy nhiệm vụ."); refresh(); setTimeout(refresh, 1500); }}>Chạy</button>}
                     {canEdit(role) && !["Completed", "Cancelled"].includes(t.status) &&
                       <button className="btn danger" disabled={busy} onClick={async () => { await run(() => api(`/tasks/${t.id}/cancel`, { method: "POST" }), "Đã hủy nhiệm vụ.", "Hủy nhiệm vụ này?"); refresh(); }}>Hủy</button>}
+                    {canEdit(role) && t.status !== "Running" &&
+                      <button className="btn ghost" disabled={busy} onClick={async () => { await run(() => api(`/tasks/${t.id}`, { method: "DELETE" }), "Đã xóa nhiệm vụ.", `Xóa nhiệm vụ #${t.id} “${t.title}” kèm lịch sử chạy? Không thể hoàn tác.`); setPicked(picked.filter((i) => i !== t.id)); if (sel === t.id) setSel(null); refresh(); }}>Xóa</button>}
                   </td></tr>
               ))}</tbody></table></div>
           ) : <Empty text="Chưa có nhiệm vụ nào." />}
@@ -327,7 +361,16 @@ export function Tasks({ role }: Role) {
           <Async loading={detail.loading} error={detail.error}>
             {detail.data && (
               <>
-                <p><Badge v={detail.data.status} /> {detail.data.title}</p>
+                <p><Badge v={detail.data.status} /> {detail.data.title}
+                  {canEdit(role) && detail.data.status !== "Running" && <> · <button className="btn ghost" onClick={() => setEdit({ id: detail.data.id, title: detail.data.title, objective: detail.data.objective, expected_output: detail.data.expected_output, acceptance_criteria: detail.data.acceptance_criteria })}>Sửa nhiệm vụ</button></>}</p>
+                {edit && edit.id === detail.data.id && (
+                  <form className="card" onSubmit={async (e) => { e.preventDefault(); const { id, ...body } = edit; await run(() => api(`/tasks/${id}`, { method: "PATCH", body }), "Đã lưu thay đổi."); setEdit(null); refresh(); }}>
+                    <Field label="Tiêu đề"><input value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} required /></Field>
+                    <Field label="Mục tiêu"><textarea value={edit.objective} onChange={(e) => setEdit({ ...edit, objective: e.target.value })} required /></Field>
+                    <Field label="Đầu ra mong muốn"><textarea value={edit.expected_output} onChange={(e) => setEdit({ ...edit, expected_output: e.target.value })} /></Field>
+                    <Field label="Tiêu chí nghiệm thu"><textarea value={edit.acceptance_criteria} onChange={(e) => setEdit({ ...edit, acceptance_criteria: e.target.value })} /></Field>
+                    <p className="row tight"><button className="btn" disabled={busy}>Lưu</button><button type="button" className="btn ghost" onClick={() => setEdit(null)}>Đóng</button></p>
+                  </form>)}
                 {detail.data.error && <div className="msg err">{detail.data.error}</div>}
                 {detail.data.result && (
                   <>

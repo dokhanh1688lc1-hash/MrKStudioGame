@@ -56,3 +56,5 @@ Lưu ý: nút “Chạy các bước sẵn sàng” chỉ chạy **một lượt
 3. Phase 2: workflow riêng từng phòng ban (Market Research → Game Design → Game Dev → QA → …) và các trang còn lại (Asset Library, Telegram…).
 4. Phase 3: game 2D mẫu bằng Godot 4 (GDD, gameplay, tài sản riêng, hồ sơ bản quyền).
 5. Telegram bot có xác thực user ID, Phase 4–5 theo đặc tả.
+
+- Quản lý việc được giao (Task Center): thanh tiến độ tổng/theo dự án/theo phòng ban (tự cập nhật 6 giây), lọc theo dự án/phòng ban/trạng thái, sửa, xóa từng việc hoặc xóa hàng loạt (không xóa việc đang chạy; giữ lịch sử sửa file và số lượt chạy) — Implemented.

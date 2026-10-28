@@ -6,8 +6,9 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from ..deps import Principal, current_user, get_db, require
-from ..models import Agent, Department, ProviderConfig, Project, Task, TaskDependency
-from ..schemas import BulkTaskIn, TaskDetail, TaskIn, TaskOut
+from ..models import (Agent, Approval, CeoReview, Department, FileChange, ProviderConfig, Project, Task, TaskAttempt,
+                      TaskDependency, UsageRecord)
+from ..schemas import BulkTaskIn, TaskDetail, TaskIn, TaskOut, TaskPatch
 from ..services.common import EngineError, audit, slugify
 from ..services.templates import all_templates
 from ..services.pipeline import TEMPLATE, create_pipeline, pipeline_tasks
@@ -156,6 +157,111 @@ def cross_review(tid: int, user: Principal = Depends(require("manager")), s: Ses
     audit(s, user.username, "cross_review_created", "task", t.id, f"→ #{r.id} bằng {reviewer}")
     s.commit()
     return {"task_id": r.id, "reviewer": reviewer, "reviewer_name": CLI_NAME[reviewer]}
+
+
+def _pct(done: int, total: int) -> int:
+    return round(100 * done / total) if total else 0
+
+
+@router.get("/progress")
+def progress(project_id: int | None = None, _: Principal = Depends(current_user), s: Session = Depends(get_db)):
+    """Tiến độ công việc: tổng, theo trạng thái, theo phòng ban, (và theo dự án khi không chọn dự án).
+    % hoàn thành = Completed / (tất cả trừ Cancelled)."""
+    where = [Task.project_id == project_id] if project_id else []
+    rows = s.execute(select(Task.project_id, Task.department_key, Task.status, func.count())
+                     .where(*where).group_by(Task.project_id, Task.department_key, Task.status)).all()
+    by_status: dict[str, int] = {}
+    deps: dict[str, dict] = {}
+    projs: dict[int, dict] = {}
+    for pid, dk, st, n in rows:
+        by_status[st] = by_status.get(st, 0) + n
+        for bucket, key in ((deps, dk), (projs, pid)):
+            b = bucket.setdefault(key, {"total": 0, "done": 0, "running": 0, "failed": 0, "cancelled": 0})
+            b["total"] += n
+            b["done"] += n if st == "Completed" else 0
+            b["running"] += n if st == "Running" else 0
+            b["failed"] += n if st == "Failed" else 0
+            b["cancelled"] += n if st == "Cancelled" else 0
+    def fin(b: dict) -> dict:
+        active = b["total"] - b["cancelled"]
+        return {**b, "pct": _pct(b["done"], active)}
+    names = {d.key: d.name for d in s.scalars(select(Department))}
+    pnames = {p.id: p.name for p in s.scalars(select(Project).where(Project.id.in_(list(projs) or [0])))}
+    total = sum(by_status.values())
+    active = total - by_status.get("Cancelled", 0)
+    out = {"total": total, "done": by_status.get("Completed", 0), "pct": _pct(by_status.get("Completed", 0), active),
+           "by_status": by_status,
+           "departments": sorted(({"key": k, "name": names.get(k, k), **fin(b)} for k, b in deps.items()), key=lambda x: x["name"])}
+    if not project_id:
+        out["projects"] = sorted(({"id": k, "name": pnames.get(k, str(k)), **fin(b)} for k, b in projs.items()), key=lambda x: x["id"], reverse=True)
+    return out
+
+
+@router.patch("/{tid}", response_model=TaskDetail)
+def edit_task(tid: int, body: TaskPatch, user: Principal = Depends(require("manager")), s: Session = Depends(get_db)):
+    t = s.get(Task, tid)
+    if not t:
+        raise HTTPException(404, "Không tìm thấy nhiệm vụ.")
+    if t.status == "Running":
+        raise HTTPException(409, "Nhiệm vụ đang chạy — hãy hủy trước khi sửa.")
+    data = body.model_dump(exclude_unset=True)
+    for k, v in data.items():
+        setattr(t, k, v)
+    audit(s, user.username, "task_edited", "task", t.id, ", ".join(sorted(data)))
+    s.commit()
+    return _detail(s, t)
+
+
+def _delete_task(s: Session, t: Task) -> None:
+    if t.status == "Running":
+        raise HTTPException(409, f"Nhiệm vụ #{t.id} đang chạy — hãy hủy trước khi xóa.")
+    for c in s.scalars(select(CeoReview).where(CeoReview.task_id == t.id)):
+        s.delete(c)
+    for c in s.scalars(select(CeoReview).where(CeoReview.followup_task_id == t.id)):
+        c.followup_task_id = None
+    for m, col in ((FileChange, FileChange.task_id), (UsageRecord, UsageRecord.task_id)):
+        for r in s.scalars(select(m).where(col == t.id)):
+            r.task_id = None  # giữ lịch sử sửa file và số lượt chạy (hạn mức), chỉ gỡ liên kết
+    for m in (Approval, TaskAttempt):
+        for r in s.scalars(select(m).where(m.task_id == t.id)):
+            s.delete(r)
+    for d in s.scalars(select(TaskDependency).where((TaskDependency.task_id == t.id) | (TaskDependency.depends_on_id == t.id))):
+        s.delete(d)
+    s.flush()
+    s.delete(t)
+
+
+@router.delete("/{tid}")
+def delete_task(tid: int, user: Principal = Depends(require("manager")), s: Session = Depends(get_db)):
+    t = s.get(Task, tid)
+    if not t:
+        raise HTTPException(404, "Không tìm thấy nhiệm vụ.")
+    title = t.title
+    _delete_task(s, t)
+    audit(s, user.username, "task_deleted", "task", tid, title)
+    s.commit()
+    return {"deleted": [tid]}
+
+
+class BulkDeleteIn(BaseModel):
+    ids: list[int]
+
+
+@router.post("/bulk-delete")
+def bulk_delete(body: BulkDeleteIn, user: Principal = Depends(require("manager")), s: Session = Depends(get_db)):
+    """Xóa nhiều nhiệm vụ; nếu có nhiệm vụ đang chạy thì không xóa gì cả."""
+    ids = sorted(set(body.ids))
+    if not ids or len(ids) > 200:
+        raise HTTPException(422, "Chọn từ 1 đến 200 nhiệm vụ.")
+    tasks = s.scalars(select(Task).where(Task.id.in_(ids))).all()
+    running = [t.id for t in tasks if t.status == "Running"]
+    if running:
+        raise HTTPException(409, f"Nhiệm vụ đang chạy: {running}. Hãy hủy chúng trước.")
+    for t in tasks:
+        _delete_task(s, t)
+    audit(s, user.username, "task_bulk_deleted", "task", "", f"{len(tasks)} nhiệm vụ: {[t.id for t in tasks]}")
+    s.commit()
+    return {"deleted": [t.id for t in tasks]}
 
 
 @router.get("/templates/all")

@@ -112,6 +112,16 @@ class TaskIn(BaseModel):
     depends_on: list[int] = []
 
 
+class TaskPatch(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    objective: str | None = Field(default=None, min_length=1)
+    context: str | None = None
+    constraints: str | None = None
+    expected_output: str | None = None
+    acceptance_criteria: str | None = None
+    requires_approval: bool | None = None
+
+
 class BulkTaskIn(BaseModel):
     """Giao cùng một nhiệm vụ cho nhiều phòng ban một lúc (mỗi phòng ban nhận một nhiệm vụ riêng)."""
     project_id: int
