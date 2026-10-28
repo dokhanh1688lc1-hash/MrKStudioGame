@@ -15,7 +15,7 @@ export const SPECS: Record<string, Spec> = {
   audio: { goal: "Audio Bible, danh mục nhạc và SFX, brief/prompt âm thanh, quản lý nguồn và giấy phép.", outputs: "Audio Bible, danh mục âm thanh, brief.",
     rules: "Không dùng nhạc/âm thanh thương mại khi chưa xác minh quyền sử dụng.", docs: ["audio_bible"], panels: ["docs", "assets_audio"] },
   game_dev: { goal: "Dự án Godot 4, scene, script, UI, gameplay, lưu tiến trình, tích hợp tài sản, build.", outputs: "Mã nguồn (đề xuất sửa file chờ bạn duyệt), tài liệu kỹ thuật, hướng dẫn chạy/build.",
-    rules: "Mỗi game có workspace riêng; mọi thay đổi file trên máy đều cần chủ studio bấm Áp dụng.", docs: ["tech"], panels: ["docs", "builds_only"] },
+    rules: "Mỗi game có workspace riêng; mọi thay đổi file trên máy đều cần chủ studio bấm Áp dụng. Studio âm thanh đang tạm dừng: Dev giữ danh mục/chỗ đặt âm thanh, phòng Pháp lý rà soát nguồn và giấy phép.", docs: ["tech", "audio_bible"], panels: ["docs", "assets_audio", "builds_only"] },
   qa: { goal: "Test case, kiểm thử gameplay/luồng chính/lưu tiến trình, báo cáo lỗi có mức độ, xác nhận sửa lỗi, hồi quy.", outputs: "Test case, kết quả chạy, báo cáo lỗi.",
     rules: "Trạng thái test: Passed, Failed, Blocked, Not Run. Không đánh dấu Passed khi test chưa chạy.", docs: ["qa_report"], panels: ["tests", "docs"] },
   monetization: { goal: "Quảng cáo phù hợp gameplay, vật phẩm/tiền tệ, mô hình miễn phí/trả phí, thử nghiệm A/B, KPI khi có dữ liệu thật.", outputs: "Kế hoạch kiếm tiền, thiết kế kinh tế game, kế hoạch A/B.",
@@ -29,11 +29,11 @@ export const SPECS: Record<string, Spec> = {
   finance: { goal: "Ngân sách theo dự án/phòng ban, chi phí dịch vụ, so sánh thực tế với hạn mức, doanh thu và lợi nhuận khi có dữ liệu.", outputs: "Sổ chi phí/doanh thu, tổng hợp lợi nhuận, cảnh báo hạn mức.",
     rules: "Phân biệt chi phí ước tính và thực tế. Doanh thu chỉ tính khi chủ studio xác nhận.", panels: ["finance"] },
   compliance: { goal: "Nguồn gốc tài sản, giấy phép, kiểm tra checklist bản quyền và chính sách nền tảng, đánh dấu tài sản chưa rõ nguồn.", outputs: "Hồ sơ nguồn gốc, checklist bản quyền, cảnh báo.",
-    rules: "AI không thể khẳng định chắc chắn không vi phạm bản quyền hay tuân thủ pháp luật — cần người có chuyên môn rà soát trước phát hành.", docs: ["legal"], panels: ["assets_all", "checklist_legal", "docs"] },
+    rules: "AI không thể khẳng định chắc chắn không vi phạm bản quyền hay tuân thủ pháp luật — cần người có chuyên môn rà soát trước phát hành.", docs: ["legal"], panels: ["assets_all", "assets_audio", "checklist_legal", "docs"] },
   operations: { goal: "Thông báo tiến độ/lỗi/ngân sách, tra cứu và tạo yêu cầu, tạm dừng/tiếp tục tác vụ, chuyển yêu cầu nhạy cảm sang Approval Center.", outputs: "Thông báo và báo cáo nhanh.",
     rules: "Bắt buộc xác thực Telegram user ID, phân quyền, audit log, bảo vệ bot token.", panels: ["telegram"] },
 };
-export const DEPT_ORDER = ["market_research", "game_design", "art", "audio", "game_dev", "qa", "monetization", "marketing", "analytics", "devops", "finance", "compliance", "operations"];
+export const DEPT_ORDER = ["market_research", "game_design", "art", "game_dev", "qa", "monetization", "marketing", "analytics", "devops", "finance", "compliance", "operations"];
 
 function useProject() {
   const projects = useLoad<{ items: any[] }>("/projects?limit=100");

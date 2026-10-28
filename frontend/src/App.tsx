@@ -16,7 +16,7 @@ const PAGES: [string, string][] = [
   ["logs", "Activity Logs"], ["settings", "Cài đặt & Bảo mật"],
 ];
 const SOON = ["Telegram bot"];
-const DEPT_LABEL: Record<string, string> = { market_research: "Market Research", game_design: "Product & Game Design", art: "Art Studio", audio: "Audio Studio", game_dev: "Game Development", qa: "QA & Testing", monetization: "Monetization & Economy", marketing: "Marketing Studio", analytics: "Data & Analytics", devops: "DevOps & Release", finance: "Finance & Resources", compliance: "IP & Compliance", operations: "Telegram & Operations" };
+const DEPT_LABEL: Record<string, string> = { market_research: "Market Research", game_design: "Product & Game Design", art: "Art Studio", audio: "Audio Studio (tạm dừng)", game_dev: "Game Development", qa: "QA & Testing", monetization: "Monetization & Economy", marketing: "Marketing Studio", analytics: "Data & Analytics", devops: "DevOps & Release", finance: "Finance & Resources", compliance: "IP & Compliance", operations: "Telegram & Operations" };
 
 function Login({ onDone }: { onDone: () => void }) {
   const [u, setU] = useState("owner");

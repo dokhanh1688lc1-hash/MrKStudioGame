@@ -12,7 +12,7 @@ type Poster = "chart" | "coin" | "mega" | "cloud" | "search" | "shield" | "walle
 // Tên phòng (Việt + Anh) và kiểu minh họa cho từng phòng ban
 const ROOMS: Record<string, { vi: string; en: string; kind: Kind; poster?: Poster; span: number }> = {
   ceo: { vi: "Sảnh điều hành", en: "CEO Office", kind: "lobby", span: 4 },
-  audio: { vi: "Phòng âm thanh & nhạc game", en: "Audio / Sound Design", kind: "audio", span: 4 },
+  audio: { vi: "Phòng âm thanh & nhạc game (tạm dừng)", en: "Audio / Sound Design", kind: "audio", span: 4 },
   qa: { vi: "Phòng kiểm thử chất lượng (QA)", en: "QA Testing / Debugging", kind: "qa", span: 4 },
   game_dev: { vi: "Phòng phát triển & lập trình", en: "Game Development / Coding", kind: "code", span: 4 },
   game_design: { vi: "Phòng thiết kế trò chơi", en: "Game Design & Level Design", kind: "design", span: 4 },

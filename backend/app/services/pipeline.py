@@ -43,9 +43,11 @@ TEMPLATE: list[Step] = [
     Step("art_bible", "art", "Art Bible",
          "Xây dựng Art Bible: phong cách thống nhất, danh sách tài sản cần có, brief cho nhân vật/môi trường/UI. Chỉ là brief và prompt, chưa tạo ảnh.",
          ("gdd",), criteria="Mỗi tài sản có nguồn gốc dự kiến và yêu cầu giấy phép."),
-    Step("audio_bible", "audio", "Audio Bible",
-         "Xây dựng Audio Bible: danh mục nhạc/hiệu ứng cho UI, gameplay, chiến thắng/thất bại; brief hoặc prompt âm thanh.",
-         ("gdd",), criteria="Không dùng âm thanh thương mại khi chưa xác minh quyền sử dụng."),
+    # Studio âm thanh đang tạm dừng: phòng Dev đảm nhiệm danh mục âm thanh tạm, phòng Pháp lý (compliance) rà soát.
+    Step("audio_bible", "game_dev", "Danh mục âm thanh (Dev, tạm thay Studio âm thanh)",
+         "Studio âm thanh đang tạm dừng. Lập danh mục âm thanh tối thiểu cho UI/gameplay/thắng-thua và chỗ đặt (placeholder) trong "
+         "Godot; chỉ ghi nhu cầu, không tạo hay tuyên bố đã có tệp âm thanh. Mỗi mục ghi nguồn dự kiến để phòng Pháp lý rà soát.",
+         ("gdd",), criteria="Không dùng âm thanh thương mại khi chưa xác minh quyền sử dụng; mọi tệp âm thanh phải qua phòng Pháp lý."),
     Step("monetization", "monetization", "Mô hình kiếm tiền",
          "Đề xuất mô hình quảng cáo/mua hàng phù hợp gameplay, kinh tế game và thử nghiệm A/B. Không cam kết doanh thu.",
          ("gdd",), criteria="Không bịa số liệu doanh thu; tránh thiết kế ép chi tiền."),
@@ -56,7 +58,7 @@ TEMPLATE: list[Step] = [
          "Xây dựng test case cho các luồng chính, lưu tiến trình, quảng cáo/mua hàng (môi trường test) và tiêu chí Passed/Failed/Blocked/Not Run.",
          ("prototype",)),
     Step("compliance", "compliance", "Rà soát bản quyền & chính sách",
-         "Lập checklist nguồn gốc tài sản, giấy phép, chính sách cửa hàng. Không tuyên bố chắc chắn không vi phạm.",
+         "Lập checklist nguồn gốc tài sản (gồm âm thanh do Dev đề xuất), giấy phép, chính sách cửa hàng. Không tuyên bố chắc chắn không vi phạm.",
          ("art_bible", "audio_bible", "prototype")),
     Step("release_prep", "devops", "Chuẩn bị phát hành",
          "Lập checklist phát hành App Store/Google Play: build, version, metadata. Không tự phát hành.",

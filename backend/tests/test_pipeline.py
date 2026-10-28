@@ -48,7 +48,7 @@ def test_pipeline_runs_in_order_with_approval_gates_and_passes_results(offline):
     offline.post(f"/api/projects/{pid}/pipeline/run-ready", params={"wait": True})
     tasks = _by_title(offline.get(f"/api/projects/{pid}/pipeline").json())
     assert tasks["Tài liệu thiết kế (GDD)"]["status"] == "Completed"
-    for name in ("Đánh giá khả thi kỹ thuật", "Art Bible", "Audio Bible", "Mô hình kiếm tiền", "Marketing & ASO"):
+    for name in ("Đánh giá khả thi kỹ thuật", "Art Bible", "Danh mục âm thanh (Dev, tạm thay Studio âm thanh)", "Mô hình kiếm tiền", "Marketing & ASO"):
         assert tasks[name]["status"] == "Completed", name
     assert tasks["Kế hoạch prototype"]["status"] == "Awaiting Approval"  # cổng thứ hai
     assert tasks["Kế hoạch kiểm thử"]["status"] == "Assigned"
