@@ -212,6 +212,8 @@ function Room({ d, selected, multi, checked, onClick }: { d: Dept; selected: boo
 function Detail({ d, go }: { d: Dept; go: (p: string) => void }) {
   const r = ROOMS[d.key];
   const tasks = useLoad<{ items: any[] }>(`/tasks?department=${d.key}&limit=6`, [d.running, d.done, d.queued]);
+  const tpls = useLoad<Record<string, any[]>>("/tasks/templates/all");
+  const mine = tpls.data?.[d.key] ?? [];
   return (
     <div className="card">
       <div className="row" style={{ alignItems: "center" }}>
@@ -221,6 +223,14 @@ function Detail({ d, go }: { d: Dept; go: (p: string) => void }) {
           <button className="btn" onClick={() => { try { localStorage.setItem("mrk.preDepts", JSON.stringify([d.key])); } catch { /* bỏ qua */ } go("tasks"); }}>Giao việc cho phòng này</button>
         </div>
       </div>
+      {mine.length > 0 && (
+        <p className="row tight" style={{ alignItems: "center" }}>
+          <span className="muted">Giao nhanh bằng mẫu:</span>
+          {mine.map((t) => (
+            <button key={t.title} className="btn ghost" title={t.objective}
+              onClick={() => { try { localStorage.setItem("mrk.preTask", JSON.stringify({ department: d.key, ...t })); } catch { /* bỏ qua */ } go("tasks"); }}>{t.title}</button>))}
+        </p>
+      )}
       {tasks.data?.items.length ? (
         <div className="tablewrap"><table><thead><tr><th>ID</th><th>Nhiệm vụ</th><th>Trạng thái</th></tr></thead>
           <tbody>{tasks.data.items.map((t) => <tr key={t.id}><td>#{t.id}</td><td>{t.title}</td><td><Badge v={t.status} /></td></tr>)}</tbody></table></div>

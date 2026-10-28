@@ -195,15 +195,23 @@ export function Tasks({ role }: Role) {
   const list = useLoad<{ items: any[]; total: number }>(`/tasks?limit=10&offset=${offset}&status=${status}&q=${encodeURIComponent(q)}`, [tick]);
   const projects = useLoad<{ items: any[] }>("/projects?limit=100");
   const depts = useLoad<any[]>("/departments");
+  const tpls = useLoad<Record<string, any[]>>("/tasks/templates/all");
   const [sel, setSel] = useState<number | null>(null);
   const detail = useLoad<any>(sel ? `/tasks/${sel}` : null, [tick]);
-  const blank = { project_id: "", departments: [] as string[], notes: {} as Record<string, string>, run_now: false, title: "", objective: "", context: "", acceptance_criteria: "", provider: "", sensitive: false, requires_approval: false };
+  const blank = { project_id: "", departments: [] as string[], notes: {} as Record<string, string>, run_now: false, title: "", objective: "", context: "", expected_output: "", acceptance_criteria: "", provider: "", sensitive: false, requires_approval: false };
   const [f, setF] = useState<any>(() => {
     try {  // Văn phòng studio chuyển danh sách phòng ban đã chọn sang đây
       const raw = localStorage.getItem("mrk.preDepts");
-      localStorage.removeItem("mrk.preDepts");
+      const rawT = localStorage.getItem("mrk.preTask");
+      localStorage.removeItem("mrk.preDepts"); localStorage.removeItem("mrk.preTask");
       const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? { ...blank, departments: arr.filter((k: unknown) => typeof k === "string") } : blank;
+      const base = Array.isArray(arr) ? { ...blank, departments: arr.filter((k: unknown) => typeof k === "string") } : blank;
+      if (rawT) {  // mẫu nhiệm vụ chọn từ Văn phòng studio
+        const t = JSON.parse(rawT);
+        return { ...base, departments: [String(t.department)], title: String(t.title ?? ""), objective: String(t.objective ?? ""),
+                 expected_output: String(t.expected_output ?? ""), acceptance_criteria: String(t.acceptance_criteria ?? "") };
+      }
+      return base;
     } catch { return blank; }
   });
   const [savedPath, setSavedPath] = useState("");
@@ -256,10 +264,17 @@ export function Tasks({ role }: Role) {
                 </label>))}
             </div>
           </div>
+          {f.departments.length === 1 && (tpls.data?.[f.departments[0]]?.length ?? 0) > 0 && (
+            <Field label="Dùng mẫu nhiệm vụ của phòng này (điền sẵn tiêu đề, mục tiêu, đầu ra, tiêu chí)">
+              <select value="" onChange={(e) => { const t = tpls.data![f.departments[0]][Number(e.target.value)]; if (t) setF({ ...f, title: t.title, objective: t.objective, expected_output: t.expected_output, acceptance_criteria: t.acceptance_criteria }); }}>
+                <option value="">— chọn mẫu —</option>{tpls.data![f.departments[0]].map((t, i) => <option key={i} value={i}>{t.title}</option>)}</select>
+            </Field>
+          )}
           <Field label="Tiêu đề *"><input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required /></Field>
           <Field label="Mục tiêu *"><textarea value={f.objective} onChange={(e) => setF({ ...f, objective: e.target.value })} required /></Field>
           <div className="row">
             <Field label="Bối cảnh / đầu vào"><textarea value={f.context} onChange={(e) => setF({ ...f, context: e.target.value })} /></Field>
+            <Field label="Đầu ra mong muốn"><textarea value={f.expected_output} onChange={(e) => setF({ ...f, expected_output: e.target.value })} /></Field>
             <Field label="Tiêu chí nghiệm thu"><textarea value={f.acceptance_criteria} onChange={(e) => setF({ ...f, acceptance_criteria: e.target.value })} /></Field>
           </div>
           {f.departments.length > 0 && (

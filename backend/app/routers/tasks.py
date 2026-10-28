@@ -9,6 +9,7 @@ from ..deps import Principal, current_user, get_db, require
 from ..models import Agent, Department, Project, Task, TaskDependency
 from ..schemas import BulkTaskIn, TaskDetail, TaskIn, TaskOut
 from ..services.common import EngineError, audit, slugify
+from ..services.templates import all_templates
 from ..services.pipeline import TEMPLATE, create_pipeline, pipeline_tasks
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -114,6 +115,12 @@ def create_bulk(body: BulkTaskIn, request: Request, user: Principal = Depends(re
             except EngineError as e:
                 errors[tid] = e.message
     return {"task_ids": ids, "started": started, "run_errors": errors}
+
+
+@router.get("/templates/all")
+def task_templates(_: Principal = Depends(current_user)):
+    """Mẫu nhiệm vụ theo phòng ban (key phòng ban → danh sách mẫu)."""
+    return all_templates()
 
 
 @router.get("/{tid}", response_model=TaskDetail)

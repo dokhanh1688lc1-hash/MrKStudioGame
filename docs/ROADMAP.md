@@ -22,7 +22,8 @@
 | Cổng phê duyệt chủ studio (GDD, Prototype, Release prep) | Implemented |
 | Màn hình “Văn phòng studio”: 14 phòng ban dạng tranh minh họa, trạng thái trực tiếp, bấm phòng để xem việc/giao việc | Implemented |
 | Giao một nhiệm vụ cho nhiều phòng ban cùng lúc (ghi chú riêng từng phòng, tùy chọn chạy ngay) | Implemented |
-| Trang chuyên sâu riêng cho từng phòng ban (workflow riêng) | Not Implemented |
+| Mẫu nhiệm vụ theo phòng ban (≈35 mẫu: GDD, Art Bible, test case, kế hoạch ra mắt…), giao nhanh từ Văn phòng studio hoặc chọn trong Task Center | Implemented |
+| Trang chuyên sâu riêng cho từng phòng ban (workflow nhiều bước riêng) | Not Implemented |
 | Sinh ảnh/âm thanh thật, build Godot, Telegram | Not Implemented |
 
 ### Dùng Claude/ChatGPT đã đăng nhập trên máy
